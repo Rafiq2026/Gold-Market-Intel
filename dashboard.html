@@ -1013,7 +1013,11 @@ async function pollQuotes(){
     if(_symbol!=='XAUUSD' && syms['XAUUSD']) html+=qchip('Gold', syms['XAUUSD']);
     if(q.dxy) html+=qchip('USDX', q.dxy);
     $('ticker').innerHTML = html || qchip(_symbol, sel);
-    if(_symbol==='XAUUSD' && q.gold_intraday && q.gold_intraday.length) _priceSeries=q.gold_intraday;
+    // Gold: prefer the REAL broker sampler (matches MetaTrader); Yahoo only as fallback.
+    if(_symbol==='XAUUSD'){
+      if(q.gold_series && q.gold_series.length>=2) _priceSeries=q.gold_series;
+      else if(q.gold_intraday && q.gold_intraday.length) _priceSeries=q.gold_intraday;
+    }
   }catch(e){ /* keep last */ }
 }
 // --- hover tooltip on charts (price + time / value + date) ---

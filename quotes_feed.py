@@ -68,7 +68,7 @@ REFRESH_SEC = 20
 
 GOLD_HIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gold_hist.json")
 SERIES_STEP = 45
-SERIES_MAX = 480
+SERIES_MAX = 1920   # ~24h of broker-priced samples @45s (covers a full day of events)
 MT5_QUOTE = os.environ.get("GBAI_MT5_QUOTE",
     r"C:\Users\ziaal\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\GoldBrainAI_Quote.txt")
 _BARS_FILE = os.environ.get("GBAI_MT5_BARS",
@@ -247,8 +247,15 @@ class QuotesFeed:
         return self.snapshot()
 
     def series(self, symbol):
-        """On-demand dense 1-min intraday for any symbol (60s cache)."""
+        """On-demand dense 1-min intraday for any symbol (60s cache).
+        Gold uses the REAL broker-priced sampler (self._series, wall-clock timestamps)
+        so the event-reaction window matches MetaTrader, not Yahoo. Falls back to Yahoo
+        only when the broker sampler has no points yet (fresh instance / PC off)."""
         symbol = (symbol or "XAUUSD").upper()
+        if symbol == "XAUUSD":
+            with self._lock:
+                if len(self._series) >= 2:
+                    return list(self._series)
         if symbol not in SYMS:
             return []
         c = self._icache.get(symbol)
