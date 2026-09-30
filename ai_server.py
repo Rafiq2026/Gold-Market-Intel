@@ -240,7 +240,9 @@ class Handler(BaseHTTPRequestHandler):
             from urllib.parse import urlparse, parse_qs
             qp = parse_qs(urlparse(self.path).query)
             sym = qp.get("symbol", ["XAUUSD"])[0]; tf = qp.get("tf", ["intraday"])[0]
-            self._send(200, {"ok": True, "symbol": sym.upper(), "tf": tf, "candles": QF.FEED.ohlc(sym, tf)})
+            _oc = QF.FEED.ohlc(sym, tf)
+            self._send(200, {"ok": True, "symbol": sym.upper(), "tf": tf,
+                             "candles": _oc.get("candles", []), "source": _oc.get("source", "")})
         elif self.path.startswith("/scorecard"):
             from urllib.parse import urlparse, parse_qs
             sym = (parse_qs(urlparse(self.path).query).get("symbol", ["XAUUSD"])[0])

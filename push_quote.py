@@ -87,7 +87,7 @@ def push_bars():
     try:
         if time.time() - os.path.getmtime(MT5_BARS) > 3600:
             return
-        bars = {"M15": [], "D1": [], "W1": []}
+        bars = {"M5": [], "M15": [], "M30": [], "H1": [], "H4": [], "D1": [], "W1": []}
         with open(MT5_BARS, "r", encoding="ascii", errors="ignore") as fh:
             for ln in fh:
                 p = ln.strip().split(",")
@@ -99,7 +99,7 @@ def push_bars():
         req = urllib.request.Request(CLOUD_URL + "/ingest/bars", data=body,
                                      headers={"Content-Type": "application/json"})
         urllib.request.urlopen(req, timeout=12).read()
-        print("[push] bars M15/%d D1/%d W1/%d -> cloud" % (len(bars["M15"]), len(bars["D1"]), len(bars["W1"])))
+        print("[push] bars -> cloud (" + ",".join("%s/%d" % (k, len(v)) for k, v in bars.items() if v) + ")")
     except Exception as e:
         print("[push] bars err:", repr(e)[:70])
 

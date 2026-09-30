@@ -26,8 +26,12 @@ from datetime import datetime, timezone
 _UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 _URL = "https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=1m&range=1d"
 _CHART = "https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=%s&range=%s"
-# candle timeframes -> (yahoo interval, range) — matches the dashboard tf selector
-_TFMAP = {"intraday": ("5m", "5d"), "swing": ("1d", "3mo"), "position": ("1wk", "2y")}
+# candle timeframe CODE -> (yahoo interval, range) for non-gold / fallback.
+_YMAP = {"M5": ("5m", "5d"), "M15": ("15m", "5d"), "M30": ("30m", "1mo"),
+         "H1": ("60m", "1mo"), "H4": ("60m", "3mo"), "D1": ("1d", "6mo"), "W1": ("1wk", "2y")}
+# code -> approx bar spacing in ms (to synthesize timestamps for broker bars)
+_STEP = {"M5": 300000, "M15": 900000, "M30": 1800000, "H1": 3600000,
+         "H4": 14400000, "D1": 86400000, "W1": 604800000}
 
 
 def _ohlc_from(res):
@@ -263,7 +267,8 @@ class QuotesFeed:
         """Accept BROKER OHLC bars pushed from the local PC (the EA writes real MT5
         bars to GoldBrainAI_Bars.csv). data = {"M15":[[o,h,l,c],...], "D1":[...], "W1":[...]}."""
         try:
-            if isinstance(data, dict) and any(data.get(k) for k in ("M15", "D1", "W1")):
+            if isinstance(data, dict) and any(data.get(k) for k in
+                    ("M5", "M15", "M30", "H1", "H4", "D1", "W1")):
                 self._pushed_bars = data
                 self._pushed_bars_ts = time.time()
                 return True
@@ -272,10 +277,10 @@ class QuotesFeed:
         return False
 
     def _broker_candles(self, tf):
-        """Real broker gold candles for the chart. tf intraday->M15, swing->D1, position->W1.
+        """Real broker gold candles for the chart (tf = M5/M15/M30/H1/H4/D1/W1).
         Reads the EA's local bars file; on the cloud uses whatever the PC pushed."""
-        btf = {"intraday": "M15", "swing": "D1", "position": "W1"}.get(tf, "M15")
-        step_ms = {"M15": 15 * 60000, "D1": 86400000, "W1": 604800000}[btf]
+        btf = tf if tf in _STEP else "M15"
+        step_ms = _STEP[btf]
         rows = None
         # local: the EA's bars file
         try:
@@ -301,34 +306,34 @@ class QuotesFeed:
         n = len(rows)
         return [[now - (n - 1 - i) * step_ms, r[0], r[1], r[2], r[3]] for i, r in enumerate(rows)]
 
-    def ohlc(self, symbol, tf="intraday"):
-        """OHLC candles. XAUUSD uses REAL BROKER bars (MT5); other symbols use Yahoo.
-        Cached (60s intraday / 15m else)."""
+    def ohlc(self, symbol, tf="M15"):
+        """OHLC candles at a timeframe code (M5..W1). XAUUSD = REAL BROKER bars (MT5);
+        other symbols = Yahoo. Cached (60s for <=M15, else 15m)."""
         symbol = (symbol or "XAUUSD").upper()
+        tf = tf if tf in _YMAP else "M15"
         if symbol == "XAUUSD":
             bc = self._broker_candles(tf)
             if bc:
-                return bc
+                return {"candles": bc[-260:], "source": "broker"}
         if symbol not in SYMS:
-            return []
-        tf = tf if tf in _TFMAP else "intraday"
+            return {"candles": [], "source": "none"}
         if not hasattr(self, "_ocache"):
             self._ocache = {}
         key = symbol + "|" + tf
         cc = self._ocache.get(key)
-        ttl = 60 if tf == "intraday" else 900
+        ttl = 60 if tf in ("M5", "M15") else 900
         if cc and (time.time() - cc[0]) < ttl:
-            return cc[1]
+            return {"candles": cc[1], "source": "feed"}
         try:
-            iv, rng = _TFMAP[tf]
+            iv, rng = _YMAP[tf]
             res = json.loads(_get(_CHART % (urllib.request.quote(SYMS[symbol][0]), iv, rng)))
-            bars = _ohlc_from(res["chart"]["result"][0])
+            bars = _ohlc_from(res["chart"]["result"][0])[-260:]
             if bars:
                 with self._lock:
                     self._ocache[key] = (time.time(), bars)
-            return bars
+            return {"candles": bars, "source": "feed"}
         except Exception:
-            return cc[1] if cc else []
+            return {"candles": cc[1] if cc else [], "source": "feed"}
 
     def snapshot(self):
         with self._lock:
