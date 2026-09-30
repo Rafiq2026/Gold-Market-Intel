@@ -18,6 +18,7 @@ import urllib.request
 from datetime import datetime, timezone
 
 import quotes_feed as QF
+import translate as TR
 
 _UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 _URL = "https://query1.finance.yahoo.com/v8/finance/chart/%s?range=%s&interval=%s"
@@ -204,7 +205,7 @@ def _compute_levels(symbol, tf):
             "last_series": last_series, "ts": time.time()}
 
 
-def build(symbol="XAUUSD", tf="swing"):
+def build(symbol="XAUUSD", tf="swing", lang="en"):
     symbol = (symbol or "XAUUSD").upper()
     tf = tf if tf in TF else "swing"
     if symbol not in QF.SYMS:
@@ -249,6 +250,7 @@ def build(symbol="XAUUSD", tf="swing"):
             "way toward %s; a break below %s would expose %s."
             % (tflabel, symbol, f(cur), trword, f(S1), f(R1), hold, f(R1), above, f(S1), below))
 
+    text = TR.to_lang(text, lang, "tech:%s:%s" % (symbol, tf))   # native AI translation (cached)
     return {"ok": True, "symbol": symbol, "tf": tf, "tf_label": tflabel, "dec": dec,
             "current": round(cur, dec), "support": S1, "resistance": R1,
             "major_support": lo_all, "major_resistance": hi_all,

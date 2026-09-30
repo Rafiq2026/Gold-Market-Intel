@@ -85,6 +85,14 @@
   canvas{width:100%;height:120px;display:block}
   .gauge-wrap{display:flex;align-items:center;gap:16px}
   .legend{font-size:11px;color:var(--dim);margin-top:8px}
+  /* --- AI Analysis tabs (Technical / Fundamental) --- */
+  .antabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:12px}
+  .antab{background:none;border:none;border-bottom:2px solid transparent;color:var(--dim);
+    font-family:inherit;font-size:13px;font-weight:700;letter-spacing:.3px;padding:6px 12px;cursor:pointer;
+    margin-bottom:-1px;transition:color .15s,border-color .15s}
+  .antab:hover{color:var(--txt)}
+  .antab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+  .anpane[hidden]{display:none}
   /* --- Ask Gold Brain AI chat --- */
   #chatMsgs{display:flex;flex-direction:column;gap:8px;min-height:120px;max-height:340px;
     overflow-y:auto;padding:6px 4px;margin-bottom:10px}
@@ -441,13 +449,6 @@
       <div class="disc" id="candleNote" data-i18n="candle_note">Live candlestick chart · pick a timeframe above · hover a candle for its OHLC.</div>
     </div>
 
-    <!-- AI analyst paragraph -->
-    <div class="card full">
-      <h2><span data-i18n="ai_analyst">AI Analyst</span> <span id="anLean" class="sub"></span></h2>
-      <div id="anText" style="font-size:14px;line-height:1.6;color:var(--txt)"></div>
-      <div class="disc" data-i18n="disc_analyst">Auto-written from live data — price, geopolitics, positioning, and the next event vs its real prior-data trend. Context, not a trade signal.</div>
-    </div>
-
     <!-- Cross-asset heatmap (Finviz-style, legal source) -->
     <div class="card full">
       <h2><span data-i18n="heatmap_hdr">Cross-Asset Heatmap</span> <span class="sub" data-i18n="heatmap_sub">— today's moves in gold's drivers</span></h2>
@@ -478,45 +479,33 @@
       <div class="disc" id="msNote"></div>
     </div>
 
-    <!-- AI technical analysis -->
+    <!-- AI analysis — merged card: Technical + Fundamental tabs -->
     <div class="card full">
-      <div style="color:var(--amber);font-size:12px;margin-bottom:8px" data-i18n="ta_warn">⚠️ AI technical analysis only — NOT trading advice or a recommendation. Trades are your own responsibility.</div>
-      <h2><span data-i18n="ta_hdr">Technical Analysis</span>
-        <select id="tfSel" class="symsel" style="margin-left:6px;padding:3px 6px;font-size:12px">
-          <option value="intraday" data-i18n="tf_intraday">Intraday</option>
-          <option value="swing" data-i18n="tf_swing">Swing · daily</option>
-          <option value="position" data-i18n="tf_position">Position · weekly</option>
-        </select>
-        <span id="taTrend" class="sub"></span>
-      </h2>
-      <div id="taLevels" class="legend" style="margin-bottom:6px">—</div>
-      <div id="taText" style="font-size:14px;line-height:1.6;color:var(--txt)" data-i18n="analyzing_chart">analyzing chart…</div>
-    </div>
-
-    <!-- AI chart-screenshot analysis (vision): technical + fundamental -->
-    <div class="card full">
-      <div style="color:var(--amber);font-size:12px;margin-bottom:8px" data-i18n="vis_warn">⚠️ AI analysis only — NOT trading advice. Upload your own chart; trades are your own responsibility.</div>
-      <h2><span data-i18n="vis_hdr">AI Chart Analysis</span> <span class="sub" data-i18n="vis_sub">— upload a screenshot (technical + fundamental)</span></h2>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
-        <input id="visFile" type="file" accept="image/*" style="font-size:12px">
-        <label class="sub" style="margin-left:4px"><span data-i18n="vis_tf">Timeframe</span>
-          <select id="visTf" class="symsel" style="margin-left:4px;padding:3px 6px;font-size:12px">
-            <option value="" data-i18n="vis_auto">Auto-detect</option>
-            <option value="M1">M1 · scalp</option>
-            <option value="M5">M5 · scalp</option>
-            <option value="M15">M15</option>
-            <option value="M30">M30</option>
-            <option value="H1">H1</option>
-            <option value="H4">H4 · swing</option>
-            <option value="D1">D1 · swing</option>
-            <option value="W1">W1 · position</option>
-          </select>
-        </label>
-        <button id="visBtn" class="symsel" data-i18n="vis_analyze" style="cursor:pointer;padding:4px 12px">Analyze</button>
-        <span id="visStatus" class="sub"></span>
+      <h2><span data-i18n="ai_analysis">AI Analysis</span></h2>
+      <div style="color:var(--amber);font-size:12px;margin:2px 0 10px" data-i18n="ai_warn">⚠️ AI analysis only — NOT trading advice or a recommendation. Trades are your own responsibility.</div>
+      <div class="antabs">
+        <button class="antab active" data-pane="paneTech" data-i18n="tab_tech">📊 Technical</button>
+        <button class="antab" data-pane="paneFund" data-i18n="tab_fund">🧭 Fundamental</button>
       </div>
-      <img id="visPrev" style="max-width:100%;max-height:220px;border-radius:8px;display:none;margin-bottom:8px" />
-      <div id="visText" style="font-size:14px;line-height:1.6;color:var(--txt);white-space:pre-wrap"></div>
+      <!-- Technical pane -->
+      <div class="anpane" id="paneTech">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+          <select id="tfSel" class="symsel" style="padding:3px 6px;font-size:12px">
+            <option value="intraday" data-i18n="tf_intraday">Intraday</option>
+            <option value="swing" data-i18n="tf_swing">Swing · daily</option>
+            <option value="position" data-i18n="tf_position">Position · weekly</option>
+          </select>
+          <span id="taTrend" class="sub"></span>
+        </div>
+        <div id="taLevels" class="legend" style="margin-bottom:6px">—</div>
+        <div id="taText" style="font-size:14px;line-height:1.6;color:var(--txt)" data-i18n="analyzing_chart">analyzing chart…</div>
+      </div>
+      <!-- Fundamental / macro pane -->
+      <div class="anpane" id="paneFund" hidden>
+        <div id="anLean" class="sub" style="margin-bottom:6px"></div>
+        <div id="anText" style="font-size:14px;line-height:1.6;color:var(--txt)"></div>
+        <div class="disc" data-i18n="disc_analyst">Auto-written from live data — price, geopolitics, positioning, and the next event vs its real prior-data trend. Context, not a trade signal.</div>
+      </div>
     </div>
 
     <!-- Events -->
@@ -554,7 +543,24 @@
       <h2 data-i18n="ask_ai">Ask Gold Brain AI</h2><span id="chatLeft" class="sub"></span>
       <div id="chatBox">
         <div id="chatMsgs"></div>
+        <div id="chatAttach" style="display:none;align-items:center;gap:8px;margin-bottom:8px">
+          <img id="chatImgPrev" style="height:44px;border-radius:6px;border:1px solid var(--line)" />
+          <select id="chatTf" class="symsel" style="padding:3px 6px;font-size:12px">
+            <option value="" data-i18n="vis_auto">Auto-detect</option>
+            <option value="M1">M1 · scalp</option>
+            <option value="M5">M5 · scalp</option>
+            <option value="M15">M15</option>
+            <option value="M30">M30</option>
+            <option value="H1">H1</option>
+            <option value="H4">H4 · swing</option>
+            <option value="D1">D1 · swing</option>
+            <option value="W1">W1 · position</option>
+          </select>
+          <button id="chatImgX" type="button" class="abtn" title="Remove image" style="padding:2px 8px">✕</button>
+        </div>
         <div id="chatRow">
+          <input id="chatFile" type="file" accept="image/*" style="display:none">
+          <button id="chatClip" type="button" class="abtn" data-i18n-title="attach_chart" title="Attach a chart screenshot" style="padding:0 12px;font-size:18px">📎</button>
           <input id="chatIn" type="text" maxlength="700" data-i18n-ph="chat_ph" placeholder="Ask about gold, levels, news, the next event…" autocomplete="off">
           <button id="chatSend" type="button" data-i18n="chat_send">Send</button>
         </div>
@@ -636,6 +642,9 @@ const I18N = {
     chat_neterr:"Network error — try again.", chat_left:"· {n} left", question:"question", questions:"questions",
     chat_send:"Send", local:"local", loading:"loading…",
     tr_up:"up", tr_down:"down", tr_side:"sideways",
+    ai_analysis:"AI Analysis", ai_warn:"⚠️ AI analysis only — NOT trading advice or a recommendation. Trades are your own responsibility.",
+    tab_tech:"📊 Technical", tab_fund:"🧭 Fundamental",
+    attach_chart:"Attach a chart screenshot", analyzing_img:"analyzing your chart…", chat_img_sent:"(chart attached)",
   },
   fa: {
     doc_title:"هوش بازار طلا", h1:"هوشِ بازارِ <b>طلا</b>",
@@ -700,6 +709,9 @@ const I18N = {
     chat_neterr:"خطای شبکه — دوباره امتحان کن.", chat_left:"· {n} باقی", question:"سوال", questions:"سوال",
     chat_send:"بفرست", local:"محلی", loading:"در حال بارگذاری…",
     tr_up:"صعودی", tr_down:"نزولی", tr_side:"خنثی",
+    ai_analysis:"تحلیلِ هوشمند", ai_warn:"⚠️ فقط تحلیلِ هوش مصنوعی — نه توصیهٔ معاملاتی. مسئولیتِ معامله با خودت است.",
+    tab_tech:"📊 تکنیکال", tab_fund:"🧭 بنیادی",
+    attach_chart:"پیوستِ اسکرین‌شاتِ چارت", analyzing_img:"در حال تحلیلِ چارتت…", chat_img_sent:"(چارت پیوست شد)",
   },
   de: {
     doc_title:"Gold-Marktintelligenz", h1:"<b>Gold</b>-Marktintelligenz",
@@ -764,6 +776,9 @@ const I18N = {
     chat_neterr:"Netzwerkfehler — bitte erneut versuchen.", chat_left:"· {n} übrig", question:"Frage", questions:"Fragen",
     chat_send:"Senden", local:"lokal", loading:"lädt…",
     tr_up:"aufwärts", tr_down:"abwärts", tr_side:"seitwärts",
+    ai_analysis:"KI-Analyse", ai_warn:"⚠️ Nur KI-Analyse — KEINE Handelsberatung. Handel auf eigene Verantwortung.",
+    tab_tech:"📊 Technisch", tab_fund:"🧭 Fundamental",
+    attach_chart:"Chart-Screenshot anhängen", analyzing_img:"analysiere deinen Chart…", chat_img_sent:"(Chart angehängt)",
   }
 };
 function t(key, vars){   // _lang is the single language global (declared below, set by the header selector)
@@ -1309,11 +1324,22 @@ function attachHover(cv){
 }
 attachHover($('evtChart')); attachHover($('spark')); attachHover($('candleChart'));
 
+// --- AI Analysis card: Technical / Fundamental tabs ---
+(function(){
+  const tabs=document.querySelectorAll('.antab'); if(!tabs.length) return;
+  tabs.forEach(tb=>tb.addEventListener('click',function(){
+    tabs.forEach(x=>x.classList.remove('active')); tb.classList.add('active');
+    document.querySelectorAll('.anpane').forEach(p=>{ p.hidden = (p.id!==tb.dataset.pane); });
+  }));
+})();
+
 // --- Ask Gold Brain AI (live market chat, server-side rate-limited) ---
 (function(){
   const box=$('chatMsgs'), inp=$('chatIn'), btn=$('chatSend'), left=$('chatLeft'), note=$('chatNote');
   if(!box||!inp||!btn) return;
+  const clip=$('chatClip'), file=$('chatFile'), attach=$('chatAttach'), imgPrev=$('chatImgPrev'), imgX=$('chatImgX'), tfSel=$('chatTf');
   let hist=[], busy=false, off=false, unavailable=false, limited=false, lastRem=null;
+  let pendImg=null;   // {b64, mime, url} of an attached chart screenshot
   function fmt(t){   // safe: escape HTML, then render **bold** and - bullets
     const esc=String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     return esc.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(^|\n)\s*[\*\-]\s+/g,'$1• ');
@@ -1324,15 +1350,38 @@ attachHover($('evtChart')); attachHover($('spark')); attachHover($('candleChart'
     if(role==='bot') d.innerHTML=fmt(text); else d.textContent=text;
     box.appendChild(d); box.scrollTop=box.scrollHeight; return d;
   }
+  function addUserImg(url, caption){
+    const d=document.createElement('div'); d.className='cmsg user';
+    d.innerHTML='<img src="'+url+'" style="max-width:100%;border-radius:8px;display:block">'+
+      (caption?'<div style="margin-top:4px">'+fmt(caption)+'</div>':'');
+    box.appendChild(d); box.scrollTop=box.scrollHeight; return d;
+  }
   function setBot(d,text){ d.classList.remove('typing'); d.innerHTML=fmt(text); box.scrollTop=box.scrollHeight; }
+  function setBotRich(d,text){ d.classList.remove('typing');
+    d.innerHTML=(typeof mdLite==='function')?mdLite(text):fmt(text); box.scrollTop=box.scrollHeight; }
   function setLeft(r){
     lastRem = (typeof r==='number') ? r : lastRem;
     if(typeof r!=='number'){ left.textContent=''; return; }
     left.textContent=t('chat_left',{n:r});
     if(r<=0){ limited=true; off=true; inp.disabled=true; btn.disabled=true; note.textContent=t('chat_limit'); }
   }
-  function lock(b){ busy=b; inp.disabled=b||off; btn.disabled=b||off; }
+  function lock(b){ busy=b; inp.disabled=b||(off&&!pendImg); btn.disabled=b; }
+  function clearImg(){ pendImg=null; if(file) file.value=''; if(attach) attach.style.display='none'; }
+  // ---- image analysis (chart screenshot) goes through the vision endpoint ----
+  async function sendImg(){
+    if(!pendImg||busy) return;
+    const cap=inp.value.trim(); const img=pendImg; const tf=(tfSel&&tfSel.value)||'';
+    addUserImg(img.url, cap); inp.value=''; clearImg(); lock(true);
+    const typing=add('bot',t('analyzing_img')); typing.classList.add('typing');
+    try{
+      const r=await (await fetch('/vision',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({image:img.b64, mime:img.mime, symbol:_symbol, tf:tf, lang:_lang})})).json();
+      setBotRich(typing, r.text||'…');
+    }catch(e){ setBot(typing,t('chat_neterr')); }
+    lock(false); inp.focus();
+  }
   async function send(){
+    if(pendImg) return sendImg();
     const msg=inp.value.trim(); if(!msg||busy||off) return;
     add('user',msg); hist.push({role:'user',text:msg}); inp.value=''; lock(true);
     const typing=add('bot','…'); typing.classList.add('typing');
@@ -1346,6 +1395,17 @@ attachHover($('evtChart')); attachHover($('spark')); attachHover($('candleChart'
     }catch(e){ setBot(typing,t('chat_neterr')); }
     lock(false); inp.focus();
   }
+  if(clip) clip.addEventListener('click',()=>file&&file.click());
+  if(file) file.addEventListener('change',()=>{
+    const f=file.files&&file.files[0]; if(!f) return;
+    const rd=new FileReader();
+    rd.onload=()=>{ const s=String(rd.result); const i=s.indexOf(',');
+      pendImg={b64:i>=0?s.slice(i+1):s, mime:f.type||'image/png', url:s};
+      if(imgPrev) imgPrev.src=s; if(attach) attach.style.display='flex';
+      inp.disabled=false; btn.disabled=false; inp.focus(); };   // allow send even if text-chat limit hit
+    rd.readAsDataURL(f);
+  });
+  if(imgX) imgX.addEventListener('click',clearImg);
   btn.addEventListener('click',send);
   inp.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); send(); } });
   // re-render language-dependent chat text when the dashboard language changes
@@ -1467,40 +1527,6 @@ function mdLite(src){
   closeUl();
   return html;
 }
-(function(){
-  var fi=$('visFile'), btn=$('visBtn'), st=$('visStatus'), out=$('visText'), prev=$('visPrev');
-  if(!fi||!btn) return;
-  var tfSel=$('visTf');
-  if(tfSel){ try{ var sv=localStorage.getItem('gmi_vtf'); if(sv!==null) tfSel.value=sv; }catch(_){}
-    tfSel.addEventListener('change',function(){ try{ localStorage.setItem('gmi_vtf',tfSel.value); }catch(_){} }); }
-  fi.addEventListener('change',function(){
-    var f=fi.files&&fi.files[0];
-    if(!f){ prev.style.display='none'; return; }
-    var r=new FileReader();
-    r.onload=function(){ prev.src=r.result; prev.style.display='block'; };
-    r.readAsDataURL(f);
-  });
-  btn.addEventListener('click',function(){
-    var f=fi.files&&fi.files[0];
-    if(!f){ st.textContent='choose a chart image first'; return; }
-    if(f.size>6*1024*1024){ st.textContent='image too large (max ~6MB)'; return; }
-    st.textContent='analyzing…'; out.textContent=''; btn.disabled=true;
-    var r=new FileReader();
-    r.onload=function(){
-      var s=String(r.result||''); var i=s.indexOf(',');
-      var b64=i>=0?s.slice(i+1):s;
-      var tf=($('visTf')&&$('visTf').value)||'';
-      fetch('/vision',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({image:b64, mime:f.type||'image/png', symbol:_symbol, tf:tf, lang:_lang})})
-        .then(function(x){return x.json();})
-        .then(function(d){ btn.disabled=false; st.textContent=d.ok?'✓ analyzed':'';
-          out.innerHTML=mdLite((d&&d.text)||'no analysis returned'); })
-        .catch(function(e){ btn.disabled=false; st.textContent=''; out.textContent='request failed: '+e; });
-    };
-    r.readAsDataURL(f);
-  });
-})();
-
 async function loadMarketSize(sym){
   sym=sym||_symbol;
   try{

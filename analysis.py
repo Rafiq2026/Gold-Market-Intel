@@ -20,6 +20,7 @@ import positioning_feed as PF
 import events_feed as EF
 import quotes_feed as QF
 import crypto_flow as CFL
+import translate as TR
 
 
 def _fmt_local_in(hours):
@@ -56,7 +57,7 @@ def _pair_effect(symbol, ev):
     return "up" if up else "down"
 
 
-def build(symbol="XAUUSD"):
+def build(symbol="XAUUSD", lang="en"):
     symbol = (symbol or "XAUUSD").upper()
     q = QF.FEED.snapshot()
     n = NF.FEED.snapshot()
@@ -177,6 +178,8 @@ def build(symbol="XAUUSD"):
     parts.append(bl)
 
     text = " ".join(parts)
+    # Native AI translation of the finished paragraph (cached; English passes through).
+    text = TR.to_lang(text, lang, "analysis:" + symbol)
     return {"ok": True, "symbol": symbol, "composite": comp, "lean": lean,
             "text": text, "updated": datetime.now(timezone.utc).strftime("%H:%M:%SZ")}
 

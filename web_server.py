@@ -222,11 +222,12 @@ class Handler(BaseHTTPRequestHandler):
             sym = (parse_qs(urlparse(self.path).query).get("symbol", ["XAUUSD"])[0])
             self._send(200, SC.FEED.snapshot_for(sym))
         elif self.path.startswith("/analysis"):
-            sym = (parse_qs(urlparse(self.path).query).get("symbol", ["XAUUSD"])[0])
-            self._send(200, AN.build(sym))
+            qp = parse_qs(urlparse(self.path).query)
+            sym = qp.get("symbol", ["XAUUSD"])[0]
+            self._send(200, AN.build(sym, qp.get("lang", ["en"])[0]))
         elif self.path.startswith("/technicals"):
             qp = parse_qs(urlparse(self.path).query)
-            self._send(200, TA.build(qp.get("symbol", ["XAUUSD"])[0], qp.get("tf", ["swing"])[0]))
+            self._send(200, TA.build(qp.get("symbol", ["XAUUSD"])[0], qp.get("tf", ["swing"])[0], qp.get("lang", ["en"])[0]))
         elif self.path.startswith("/cryptoflow"):
             sym = (parse_qs(urlparse(self.path).query).get("symbol", ["BTCUSD"])[0])
             self._send(200, CFL.FEED.snapshot_for(sym))
