@@ -246,16 +246,40 @@ class QuotesFeed:
                     self._save_series()
         return self.snapshot()
 
+    def gold_rich_series(self):
+        """A dense, BROKER-priced gold price series with REAL timestamps for the
+        event-reaction window: real broker M5 candle closes (~16h of history that
+        survives redeploys, since the PC re-pushes them) MERGED with the live 45s
+        sampler for fine detail near 'now'. All points are broker scale — no Yahoo
+        mixing, no synthetic cliffs. 20s cache. Empty -> caller falls back to Yahoo."""
+        try:
+            cc = getattr(self, "_grs_cache", None)
+            if cc and (time.time() - cc[0]) < 20:
+                return cc[1]
+            out = [[int(c[0]), float(c[4])] for c in self._broker_candles("M5")]
+            last_t = out[-1][0] if out else 0
+            with self._lock:
+                live = list(self._series)
+            for t, p in live:
+                if int(t) > last_t:
+                    out.append([int(t), float(p)])
+            out.sort(key=lambda z: z[0])
+            self._grs_cache = (time.time(), out)
+            return out
+        except Exception:
+            with self._lock:
+                return list(self._series)
+
     def series(self, symbol):
-        """On-demand dense 1-min intraday for any symbol (60s cache).
-        Gold uses the REAL broker-priced sampler (self._series, wall-clock timestamps)
-        so the event-reaction window matches MetaTrader, not Yahoo. Falls back to Yahoo
-        only when the broker sampler has no points yet (fresh instance / PC off)."""
+        """On-demand dense intraday for any symbol (60s cache). Gold uses the REAL
+        broker-priced rich series (see gold_rich_series) so the event-reaction window
+        matches MetaTrader, not Yahoo. Falls back to Yahoo only when there is no broker
+        data at all (fresh instance / PC off)."""
         symbol = (symbol or "XAUUSD").upper()
         if symbol == "XAUUSD":
-            with self._lock:
-                if len(self._series) >= 2:
-                    return list(self._series)
+            rs = self.gold_rich_series()
+            if len(rs) >= 2:
+                return rs
         if symbol not in SYMS:
             return []
         c = self._icache.get(symbol)
@@ -289,18 +313,21 @@ class QuotesFeed:
         btf = tf if tf in _STEP else "M15"
         step_ms = _STEP[btf]
         rows = None
-        # local: the EA's bars file
+        # local: the EA's bars file. New format = TF,epoch_sec,o,h,l,c (6 cols, REAL time);
+        # old format = TF,o,h,l,c (5 cols, no time -> synthesized below).
         try:
             if os.path.exists(_BARS_FILE) and time.time() - os.path.getmtime(_BARS_FILE) < 3600:
                 rows = []
                 with open(_BARS_FILE, "r", encoding="ascii", errors="ignore") as fh:
                     for ln in fh:
                         p = ln.strip().split(",")
-                        if len(p) == 5 and p[0] == btf:
+                        if len(p) == 6 and p[0] == btf:
+                            rows.append([int(float(p[1])) * 1000, float(p[2]), float(p[3]), float(p[4]), float(p[5])])
+                        elif len(p) == 5 and p[0] == btf:
                             rows.append([float(p[1]), float(p[2]), float(p[3]), float(p[4])])
         except Exception:
             rows = None
-        # cloud: pushed bars
+        # cloud: pushed bars (rows may be [t,o,h,l,c] with real time, or legacy [o,h,l,c])
         if not rows:
             try:
                 if time.time() - getattr(self, "_pushed_bars_ts", 0) < 3600:
@@ -309,9 +336,17 @@ class QuotesFeed:
                 rows = None
         if not rows:
             return []
+        # Rows with a real timestamp (5 fields) are returned as-is; timeless rows
+        # (4 fields) get synthesized timestamps ending "now".
         now = int(time.time() * 1000)
         n = len(rows)
-        return [[now - (n - 1 - i) * step_ms, r[0], r[1], r[2], r[3]] for i, r in enumerate(rows)]
+        out = []
+        for i, r in enumerate(rows):
+            if len(r) >= 5:
+                out.append([int(r[0]), float(r[1]), float(r[2]), float(r[3]), float(r[4])])
+            else:
+                out.append([now - (n - 1 - i) * step_ms, float(r[0]), float(r[1]), float(r[2]), float(r[3])])
+        return out
 
     def ohlc(self, symbol, tf="M15"):
         """OHLC candles at a timeframe code (M5..W1). XAUUSD = REAL BROKER bars (MT5);
@@ -343,11 +378,12 @@ class QuotesFeed:
             return {"candles": cc[1] if cc else [], "source": "feed"}
 
     def snapshot(self):
+        rich = self.gold_rich_series()   # broker-priced, real timestamps (for the reaction window)
         with self._lock:
             return {"ok": bool(self._q), "symbols": dict(self._q), "dxy": self._dxy,
                     "gold": self._q.get("XAUUSD"),          # back-compat
-                    "gold_intraday": list(self._intraday),   # back-compat (XAUUSD)
-                    "gold_series": list(self._series),
+                    "gold_intraday": list(self._intraday),   # back-compat (XAUUSD, Yahoo)
+                    "gold_series": rich if len(rich) >= 2 else list(self._series),
                     "updated": self._updated}
 
 

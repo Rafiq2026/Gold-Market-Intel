@@ -91,7 +91,9 @@ def push_bars():
         with open(MT5_BARS, "r", encoding="ascii", errors="ignore") as fh:
             for ln in fh:
                 p = ln.strip().split(",")
-                if len(p) == 5 and p[0] in bars:
+                if len(p) == 6 and p[0] in bars:          # TF,epoch_sec,o,h,l,c (real time)
+                    bars[p[0]].append([int(float(p[1])) * 1000, float(p[2]), float(p[3]), float(p[4]), float(p[5])])
+                elif len(p) == 5 and p[0] in bars:        # legacy TF,o,h,l,c (no time)
                     bars[p[0]].append([float(p[1]), float(p[2]), float(p[3]), float(p[4])])
         if not any(bars.values()):
             return
