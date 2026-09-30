@@ -274,7 +274,7 @@
   #symDDlabel{font-size:14px;font-weight:700}
   .dd-caret{margin-left:auto;color:var(--cyan);transition:transform .25s;font-size:11px}
   .dd.open .dd-caret{transform:rotate(180deg)}
-  .dd-list{position:absolute;top:calc(100% + 7px);left:0;min-width:100%;z-index:80;
+  .dd-list{position:absolute;top:calc(100% + 7px);left:0;min-width:100%;z-index:200;
     background:linear-gradient(158deg,rgba(20,32,50,.98),rgba(9,14,24,.99));
     border:1.5px solid rgba(95,220,255,.5);border-radius:12px;padding:6px;display:none;
     max-height:74vh;overflow:auto;backdrop-filter:blur(16px);
@@ -292,6 +292,9 @@
   .dd.compact .dd-dot{display:none}
   .dd.compact .dd-list{min-width:130px}
   .dd-lbl{font-weight:600}
+  /* when an in-card dropdown is open, lift the WHOLE card above later cards so its
+     list isn't hidden behind the next panel (each card is its own stacking context) */
+  .card:has(.dd.open){z-index:130}
   @media(max-width:640px){ .evtwheel-wrap{gap:10px} .evtdial{width:46px;height:46px;font-size:20px} }
 </style>
 </head>
