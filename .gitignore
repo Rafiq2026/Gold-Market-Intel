@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+# Trained model (large; server runs in heuristic mode without it)
+model.pkl
+# Logs
+*.log
+requests.log
+srv_out.log
+srv_err.log
+*.out
+# Runtime caches / state (regenerated live on the server)
+cot_cache.json
+calendar_cache.json
+macro_cache.json
+gmi_history.json
+gold_hist.json
+scorecard.json
+# Spreadsheets / local exports
+*.xls
+*.xlsx
+# Secrets (never commit)
+.env
+*.key

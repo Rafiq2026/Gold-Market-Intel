@@ -1,0 +1,16 @@
+# Render.com Blueprint - deploys the Gold Market Intelligence dashboard.
+# On Render: New + -> Blueprint -> pick the repo that contains this file.
+services:
+  - type: web
+    name: gold-market-intel
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      # Render will PROMPT you for these values on deploy (sync:false = not stored in git).
+      - key: GBAI_DASH_PASSWORD      # the shared login password you give friends
+        sync: false
+      - key: GBAI_GEMINI_KEY         # (optional) enables the AI chart-vision upload
+        sync: false

@@ -1,0 +1,5 @@
+# Only needed to TRAIN and serve the scikit-learn model.
+# The server (ai_server.py) runs WITHOUT these in heuristic mode.
+numpy>=1.24
+scikit-learn>=1.3
+joblib>=1.3

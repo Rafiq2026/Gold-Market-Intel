@@ -1,0 +1,4 @@
+[GoldBrainAI] starting live news feed (economic calendar + geo headlines)...
+[GoldBrainAI] news ready: ok=False geo_risk=0.0 blocked=False next='' in -1m
+[GoldBrainAI] model server on http://127.0.0.1:8008  (source=heuristic)
+[GoldBrainAI] endpoints: POST /predict, GET /health, GET /news   (Ctrl+C to stop)

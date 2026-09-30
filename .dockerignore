@@ -1,0 +1,24 @@
+# Keep the image tiny + the deploy clean: exclude local-only / regenerated files.
+__pycache__/
+*.pyc
+model.pkl
+train_model.py
+model.py
+daily_report.py
+ai_server.py
+start_server.bat
+*.log
+*.out
+*.old4col
+*.xlsx
+*.xls
+requests.log
+srv_out.log
+srv_err.log
+# runtime caches (regenerated live on the server)
+cot_cache.json
+calendar_cache.json
+macro_cache.json
+gmi_history.json
+gold_hist.json
+scorecard.json
