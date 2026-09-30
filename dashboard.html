@@ -85,6 +85,28 @@
   canvas{width:100%;height:120px;display:block}
   .gauge-wrap{display:flex;align-items:center;gap:16px}
   .legend{font-size:11px;color:var(--dim);margin-top:8px}
+  /* --- Ask Gold Brain AI chat --- */
+  #chatMsgs{display:flex;flex-direction:column;gap:8px;min-height:120px;max-height:340px;
+    overflow-y:auto;padding:6px 4px;margin-bottom:10px}
+  .cmsg{max-width:82%;padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.5;
+    white-space:pre-wrap;word-wrap:break-word;border:1px solid var(--line)}
+  .cmsg.user{align-self:flex-end;background:rgba(224,179,65,.12);border-color:var(--gold2);
+    color:var(--txt);border-bottom-right-radius:4px}
+  .cmsg.bot{align-self:flex-start;background:var(--panel2);border-color:var(--cyan2);
+    color:var(--txt);border-bottom-left-radius:4px}
+  .cmsg.sys{align-self:center;background:transparent;border:none;color:var(--dim);
+    font-size:11px;font-style:italic}
+  .cmsg.typing{color:var(--dim);font-style:italic}
+  #chatRow{display:flex;gap:8px}
+  #chatIn{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+    padding:10px 12px;color:var(--txt);font-size:13px;outline:none}
+  #chatIn:focus{border-color:var(--cyan)}
+  #chatIn:disabled{opacity:.5}
+  #chatSend{background:linear-gradient(135deg,var(--cyan),var(--cyan2));color:#04121a;
+    border:none;border-radius:10px;padding:0 18px;font-weight:700;font-size:13px;cursor:pointer;
+    letter-spacing:.5px}
+  #chatSend:disabled{opacity:.45;cursor:not-allowed}
+  #chatSend:hover:not(:disabled){filter:brightness(1.1)}
   .vh{color:var(--gold);font-weight:700;font-size:13px;margin:14px 0 5px;text-transform:uppercase;letter-spacing:.4px}
   .vh:first-child{margin-top:0}
   .vul{margin:2px 0 4px;padding-left:18px}
@@ -509,11 +531,17 @@
       <div id="detailNote" style="color:var(--dim);font-size:12px;margin-top:8px"></div>
     </div>
 
-    <!-- Composite history sparkline -->
+    <!-- Ask Gold Brain AI (live market chat) -->
     <div class="card full">
-      <h2>Composite drivers — this session</h2>
-      <canvas id="spark" width="1000" height="120"></canvas>
-      <div class="legend">Builds while this page is open (stored in your browser only).</div>
+      <h2>Ask Gold Brain AI <span id="chatLeft" class="sub"></span></h2>
+      <div id="chatBox">
+        <div id="chatMsgs"></div>
+        <div id="chatRow">
+          <input id="chatIn" type="text" maxlength="700" placeholder="Ask about gold, levels, news, the next event…" autocomplete="off">
+          <button id="chatSend" type="button">Send</button>
+        </div>
+        <div class="disc" id="chatNote">Answers use the dashboard's live market context. Limited number of questions. Not financial advice.</div>
+      </div>
     </div>
   </div>
 </div>
@@ -591,7 +619,8 @@ function pushHistory(score){
   return h;
 }
 function drawSpark(h){
-  const c=$('spark'), x=c.getContext('2d'); const W=c.width=c.clientWidth||1000, H=c.height;
+  const c=$('spark'); if(!c) return;   // spark card replaced by the chat card
+  const x=c.getContext('2d'); const W=c.width=c.clientWidth||1000, H=c.height;
   x.clearRect(0,0,W,H);
   // zero line
   const y0=H/2; x.strokeStyle='#2a323d'; x.lineWidth=1;
@@ -848,10 +877,12 @@ async function refresh(){
       : _isCrypto
       ? 'Bias = 0.4·Risk + 0.3·USD + 0.3·COT'
       : 'Bias = 0.5·USD + 0.5·COT')+' &nbsp;•&nbsp; −100 bearish … +100 bullish (for '+_symbol+')';
-    try{
-      const hd=await (await fetch('/history',{cache:'no-store'})).json();
-      if(hd && hd.count>0) drawSpark(hd.points); else drawSpark(pushHistory(score));
-    }catch(e){ drawSpark(pushHistory(score)); }
+    if($('spark')){   // only when the composite sparkline card is present
+      try{
+        const hd=await (await fetch('/history',{cache:'no-store'})).json();
+        if(hd && hd.count>0) drawSpark(hd.points); else drawSpark(pushHistory(score));
+      }catch(e){ drawSpark(pushHistory(score)); }
+    }
 
     // news / geopolitics (macro context)
     const geoB=+n.geo_bias||0;
@@ -1040,6 +1071,58 @@ function attachHover(cv){
   cv.addEventListener('mouseleave',()=>{ chartTip.hidden=true; });
 }
 attachHover($('evtChart')); attachHover($('spark')); attachHover($('candleChart'));
+
+// --- Ask Gold Brain AI (live market chat, server-side rate-limited) ---
+(function(){
+  const box=$('chatMsgs'), inp=$('chatIn'), btn=$('chatSend'), left=$('chatLeft'), note=$('chatNote');
+  if(!box||!inp||!btn) return;
+  let hist=[], busy=false, off=false;
+  function fmt(t){   // safe: escape HTML, then render **bold** and - bullets
+    const esc=String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return esc.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(^|\n)\s*[\*\-]\s+/g,'$1• ');
+  }
+  function add(role,text){
+    const d=document.createElement('div');
+    d.className='cmsg '+(role==='user'?'user':role==='sys'?'sys':'bot');
+    if(role==='bot') d.innerHTML=fmt(text); else d.textContent=text;
+    box.appendChild(d); box.scrollTop=box.scrollHeight; return d;
+  }
+  function setBot(d,text){ d.classList.remove('typing'); d.innerHTML=fmt(text); box.scrollTop=box.scrollHeight; }
+  function setLeft(r){
+    if(typeof r!=='number'){ left.textContent=''; return; }
+    left.textContent='· '+r+' question'+(r===1?'':'s')+' left';
+    if(r<=0){ off=true; inp.disabled=true; btn.disabled=true;
+      note.textContent='Question limit reached for now — please try again a bit later.'; }
+  }
+  function lock(b){ busy=b; inp.disabled=b||off; btn.disabled=b||off; }
+  async function send(){
+    const msg=inp.value.trim(); if(!msg||busy||off) return;
+    add('user',msg); hist.push({role:'user',text:msg}); inp.value=''; lock(true);
+    const typing=add('bot','…'); typing.classList.add('typing');
+    try{
+      const r=await (await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({message:msg,history:hist.slice(0,-1),symbol:_symbol})})).json();
+      setBot(typing, r.text||'…');
+      if(r.ok){ hist.push({role:'model',text:r.text}); }
+      if(typeof r.remaining==='number') setLeft(r.remaining);
+      if(r.limited){ off=true; inp.disabled=true; btn.disabled=true;
+        note.textContent='Question limit reached for now — please try again a bit later.'; }
+    }catch(e){ setBot(typing,'Network error — try again.'); }
+    lock(false); inp.focus();
+  }
+  btn.addEventListener('click',send);
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); send(); } });
+  (async function(){
+    try{
+      const s=await (await fetch('/chat/status',{cache:'no-store'})).json();
+      if(!s.available){ off=true; inp.disabled=true; btn.disabled=true;
+        note.textContent='Chat is temporarily unavailable.';
+        add('sys','Chat is temporarily unavailable.'); return; }
+      setLeft(s.remaining);
+      add('sys','Ask me about gold, key levels, the news backdrop or the next event.');
+    }catch(e){}
+  })();
+})();
 
 // --- instrument menu (multi-symbol) ---
 $('symSel').value=_symbol;

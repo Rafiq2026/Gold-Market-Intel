@@ -38,6 +38,7 @@ import scorecard as SC
 import analysis as AN
 import technicals as TA
 import vision as VIS
+import chat as CH
 import crypto_flow as CFL
 import heatmap as HM
 import marketsize as MS
@@ -213,6 +214,10 @@ class Handler(BaseHTTPRequestHandler):
             _oc = QF.FEED.ohlc(sym, tf)
             self._send(200, {"ok": True, "symbol": sym.upper(), "tf": tf,
                              "candles": _oc.get("candles", []), "source": _oc.get("source", "")})
+        elif self.path.startswith("/chat/status"):
+            cid = self._cookies().get(_COOKIE) or self.client_address[0]
+            self._send(200, {"ok": True, "available": CH.available(),
+                             "remaining": CH.remaining(cid), "per_max": CH.PER_CLIENT_MAX})
         elif self.path.startswith("/scorecard"):
             sym = (parse_qs(urlparse(self.path).query).get("symbol", ["XAUUSD"])[0])
             self._send(200, SC.FEED.snapshot_for(sym))
@@ -271,6 +276,19 @@ class Handler(BaseHTTPRequestHandler):
             sym = (d.get("symbol") or "XAUUSD").upper()
             self._send(200, VIS.analyze(d.get("image", ""), d.get("mime", "image/png"),
                                         sym, _vision_context(sym), d.get("tf", "")))
+            return
+        if self.path.startswith("/chat"):
+            if not self._is_authed():
+                self._send(401, {"ok": False, "error": "auth required"}); return
+            try:
+                n = int(self.headers.get("Content-Length", 0))
+                d = json.loads(self.rfile.read(n).decode("utf-8")) if n > 0 else {}
+            except Exception:
+                d = {}
+            sym = (d.get("symbol") or "XAUUSD").upper()
+            cid = self._cookies().get(_COOKIE) or self.client_address[0]
+            self._send(200, CH.reply(d.get("message", ""), d.get("history", []),
+                                     _vision_context(sym), cid))
             return
         # Live broker-quote ingest from the local MT5 pusher (push_quote.py), so
         # the cloud gold price matches MetaTrader exactly while the PC is on.
