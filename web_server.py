@@ -279,6 +279,25 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(403, {"ok": False, "error": "bad token"})
                 return
             self._send(200, {"ok": QF.FEED.ingest(d)})
+        # Live economic calendar pushed from the local PC (the datacenter IP can be
+        # blocked by the calendar CDN, so the local machine feeds it to the cloud).
+        elif self.path.startswith("/ingest/calendar"):
+            try:
+                n = int(self.headers.get("Content-Length", 0))
+                d = json.loads(self.rfile.read(n).decode("utf-8")) if n > 0 else {}
+            except Exception:
+                d = {}
+            tok = os.environ.get("GBAI_INGEST_TOKEN", "")
+            if tok and d.get("token") != tok:
+                self._send(403, {"ok": False, "error": "bad token"})
+                return
+            ok = EF.FEED.ingest_calendar(d.get("data") or [])
+            if ok:
+                try:
+                    EF.FEED.refresh()   # rebuild the events list from the fresh calendar now
+                except Exception:
+                    pass
+            self._send(200, {"ok": ok})
         else:
             self._send(404, {"ok": False, "error": "not found"})
 

@@ -271,9 +271,29 @@ class EventsFeed:
             pass
         return None
 
+    def ingest_calendar(self, data):
+        """Accept a calendar pushed from the local PC (reliable source) — used on the
+        cloud where the datacenter IP may be blocked by the calendar CDN."""
+        try:
+            if isinstance(data, list) and data:
+                self._pushed_cal = data
+                self._pushed_cal_ts = time.time()
+                return True
+        except Exception:
+            pass
+        return False
+
     def refresh(self):
-        # Prefer the shared cache; only fetch directly if it is missing/stale.
-        data = self._load_shared_calendar()
+        # 1) calendar pushed from the local PC (most reliable on the cloud).
+        data = None
+        try:
+            if time.time() - getattr(self, "_pushed_cal_ts", 0) < 7200:
+                data = getattr(self, "_pushed_cal", None)
+        except Exception:
+            pass
+        # 2) shared cache (local news_feed); 3) direct fetch.
+        if data is None:
+            data = self._load_shared_calendar()
         if data is None:
             try:
                 data = json.loads(_get(CALENDAR_URL).decode("utf-8", "ignore"))

@@ -26,6 +26,8 @@ MT5_QUOTE = os.environ.get("GBAI_MT5_QUOTE",
     r"C:\Users\ziaal\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\GoldBrainAI_Quote.txt")
 MT5_FLOW = os.environ.get("GBAI_MT5_FLOW",
     r"C:\Users\ziaal\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\GoldBrainAI_Flow.txt")
+# calendar the LOCAL server already downloaded (residential IP) -> push to the cloud
+CAL_CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "calendar_cache.json")
 CLOUD_URL = (sys.argv[1] if len(sys.argv) > 1 else os.environ.get("GBAI_CLOUD_URL", "")).rstrip("/")
 TOKEN = sys.argv[2] if len(sys.argv) > 2 else os.environ.get("GBAI_INGEST_TOKEN", "")
 INTERVAL = 5
@@ -59,10 +61,29 @@ def read_quote():
     return q
 
 
+def push_calendar():
+    """Send the locally-downloaded economic calendar to the cloud (it may be blocked
+    on the datacenter IP). Best-effort; the cloud keeps its last good copy otherwise."""
+    try:
+        with open(CAL_CACHE, "r", encoding="utf-8") as fh:
+            obj = json.load(fh)
+        data = obj.get("data") or []
+        if not data:
+            return
+        body = json.dumps({"data": data, "token": TOKEN}).encode("utf-8")
+        req = urllib.request.Request(CLOUD_URL + "/ingest/calendar", data=body,
+                                     headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=12).read()
+        print("[push] calendar %d events -> cloud" % len(data))
+    except Exception as e:
+        print("[push] cal err:", repr(e)[:70])
+
+
 def main():
     if not CLOUD_URL:
         print("Set GBAI_CLOUD_URL (your Render URL) or pass it as arg 1."); return
     print("[push] MT5 %s -> %s  every %ss" % (MT5_QUOTE, CLOUD_URL, INTERVAL))
+    last_cal = 0
     while True:
         try:
             q = read_quote()               # push every cycle so price AND flow stay fresh
@@ -73,6 +94,9 @@ def main():
             print("[push] %.2f%s -> %s" % (q["bid"], (" +flow" if "flow" in q else ""), r.decode()[:30]))
         except Exception as e:
             print("[push] err:", repr(e)[:80])
+        # push the calendar right away then every ~5 min (keeps cloud events populated)
+        if time.time() - last_cal > 300:
+            push_calendar(); last_cal = time.time()
         time.sleep(INTERVAL)
 
 
