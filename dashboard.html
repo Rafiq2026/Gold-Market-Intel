@@ -817,9 +817,15 @@ async function refresh(){
     $('evtHdr').textContent='Upcoming High-Impact Events → expected reaction ('+_symbol+')';
     $('evtColHdr').textContent='Expected → '+_symbol+' / Reacted';
     const wheel=$('evtWheel'); wheel.innerHTML='';
+    const _dial=$('evtDial'), _wrap=document.querySelector('.evtwheel-wrap');
     const up=ev.filter(e=>e.hours_until>=-12).slice(0,16);   // keep recent PASSED events too
-    if(!up.length){ wheel.innerHTML='<div class="neu" style="padding:22px">no upcoming events</div>'; window._evtCount=0; }
+    if(!up.length){
+      wheel.innerHTML='<div class="neu" style="padding:22px">no upcoming events right now — the calendar feed may still be loading.</div>';
+      window._evtCount=0;
+      if(_dial) _dial.style.display='none'; if(_wrap) _wrap.style.minHeight='0'; wheel.style.height='auto';
+    }
     else {
+      if(_dial) _dial.style.display=''; if(_wrap) _wrap.style.minHeight=''; wheel.style.height='';
       up.forEach((e,i)=>{
         const soon=e.hours_until>=0 && e.hours_until<3;
         const pv=pairView(e); const dir=pv.dir;

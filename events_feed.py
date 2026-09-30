@@ -32,7 +32,7 @@ CALENDAR_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
 CAL_CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "calendar_cache.json")
 REFRESH_SEC = 1800                      # calendar changes slowly; every 30 min
 RELEVANT = {"USD", "EUR", "GBP", "ALL", "CNY"}   # gold-relevant currencies
-_UA = {"User-Agent": "Mozilla/5.0 (GoldBrainAI events feed)"}
+_UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"}
 
 # Tier-1 US market movers (widen attention).
 _TIER1 = ("fomc", "federal funds", "rate decision", "interest rate", "non-farm",

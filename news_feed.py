@@ -74,7 +74,7 @@ CALM_KEYWORDS = {
     "agreement": 1, "resolved": 1, "deal reached": 2, "diplomacy": 1,
 }
 
-_UA = {"User-Agent": "Mozilla/5.0 (GoldBrainAI news feed)"}
+_UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"}
 
 # Categorise risk headlines so the dashboard can show WHAT is driving geo risk.
 _GEO_CATS = {
