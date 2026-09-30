@@ -207,6 +207,10 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path.startswith("/series"):
             sym = (parse_qs(urlparse(self.path).query).get("symbol", ["XAUUSD"])[0])
             self._send(200, {"ok": True, "symbol": sym.upper(), "series": QF.FEED.series(sym)})
+        elif self.path.startswith("/ohlc"):
+            qp = parse_qs(urlparse(self.path).query)
+            sym = qp.get("symbol", ["XAUUSD"])[0]; tf = qp.get("tf", ["intraday"])[0]
+            self._send(200, {"ok": True, "symbol": sym.upper(), "tf": tf, "candles": QF.FEED.ohlc(sym, tf)})
         elif self.path.startswith("/scorecard"):
             sym = (parse_qs(urlparse(self.path).query).get("symbol", ["XAUUSD"])[0])
             self._send(200, SC.FEED.snapshot_for(sym))
@@ -298,6 +302,18 @@ class Handler(BaseHTTPRequestHandler):
                 except Exception:
                     pass
             self._send(200, {"ok": ok})
+        # Real broker OHLC bars pushed from the local PC (for the live candle chart).
+        elif self.path.startswith("/ingest/bars"):
+            try:
+                n = int(self.headers.get("Content-Length", 0))
+                d = json.loads(self.rfile.read(n).decode("utf-8")) if n > 0 else {}
+            except Exception:
+                d = {}
+            tok = os.environ.get("GBAI_INGEST_TOKEN", "")
+            if tok and d.get("token") != tok:
+                self._send(403, {"ok": False, "error": "bad token"})
+                return
+            self._send(200, {"ok": QF.FEED.ingest_bars(d.get("bars") or {})})
         else:
             self._send(404, {"ok": False, "error": "not found"})
 

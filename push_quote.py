@@ -28,6 +28,9 @@ MT5_FLOW = os.environ.get("GBAI_MT5_FLOW",
     r"C:\Users\ziaal\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\GoldBrainAI_Flow.txt")
 # calendar the LOCAL server already downloaded (residential IP) -> push to the cloud
 CAL_CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "calendar_cache.json")
+# real broker OHLC bars the EA writes -> push to the cloud for the live candle chart
+MT5_BARS = os.environ.get("GBAI_MT5_BARS",
+    r"C:\Users\ziaal\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\GoldBrainAI_Bars.csv")
 CLOUD_URL = (sys.argv[1] if len(sys.argv) > 1 else os.environ.get("GBAI_CLOUD_URL", "")).rstrip("/")
 TOKEN = sys.argv[2] if len(sys.argv) > 2 else os.environ.get("GBAI_INGEST_TOKEN", "")
 INTERVAL = 5
@@ -79,11 +82,33 @@ def push_calendar():
         print("[push] cal err:", repr(e)[:70])
 
 
+def push_bars():
+    """Send the EA's real broker OHLC bars (M15/D1/W1) to the cloud candle chart."""
+    try:
+        if time.time() - os.path.getmtime(MT5_BARS) > 3600:
+            return
+        bars = {"M15": [], "D1": [], "W1": []}
+        with open(MT5_BARS, "r", encoding="ascii", errors="ignore") as fh:
+            for ln in fh:
+                p = ln.strip().split(",")
+                if len(p) == 5 and p[0] in bars:
+                    bars[p[0]].append([float(p[1]), float(p[2]), float(p[3]), float(p[4])])
+        if not any(bars.values()):
+            return
+        body = json.dumps({"bars": bars, "token": TOKEN}).encode("utf-8")
+        req = urllib.request.Request(CLOUD_URL + "/ingest/bars", data=body,
+                                     headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=12).read()
+        print("[push] bars M15/%d D1/%d W1/%d -> cloud" % (len(bars["M15"]), len(bars["D1"]), len(bars["W1"])))
+    except Exception as e:
+        print("[push] bars err:", repr(e)[:70])
+
+
 def main():
     if not CLOUD_URL:
         print("Set GBAI_CLOUD_URL (your Render URL) or pass it as arg 1."); return
     print("[push] MT5 %s -> %s  every %ss" % (MT5_QUOTE, CLOUD_URL, INTERVAL))
-    last_cal = 0
+    last_cal = 0; last_bars = 0
     while True:
         try:
             q = read_quote()               # push every cycle so price AND flow stay fresh
@@ -97,6 +122,8 @@ def main():
         # push the calendar right away then every ~5 min (keeps cloud events populated)
         if time.time() - last_cal > 300:
             push_calendar(); last_cal = time.time()
+        if time.time() - last_bars > 60:
+            push_bars(); last_bars = time.time()
         time.sleep(INTERVAL)
 
 

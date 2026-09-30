@@ -383,6 +383,13 @@
       <div class="disc">Weekly report — NOT a live trader count.</div>
     </div>
 
+    <!-- Live candlestick chart (broker OHLC for gold; timeframe = the TA selector) -->
+    <div class="card full">
+      <h2>Live Chart <span id="candleMeta" class="sub"></span></h2>
+      <canvas id="candleChart" width="1000" height="300" style="height:300px"></canvas>
+      <div class="disc" id="candleNote">Real broker candles (MetaTrader) for gold while your PC feeds it; other symbols use the market feed. Timeframe follows the Technical-Analysis selector.</div>
+    </div>
+
     <!-- AI analyst paragraph -->
     <div class="card full">
       <h2>AI Analyst <span id="anLean" class="sub"></span></h2>
@@ -759,6 +766,47 @@ function drawEventChart(e){
   c.__pts=pts.map((p,i)=>({px:pad.l+i*xw+xw*0.5,text:'<b>'+p.v.toFixed(2)+(h.unit||'')+'</b> · '+(p.fore?'forecast':p.d)}));
 }
 
+function drawCandles(candles){
+  const c=$('candleChart'); if(!c) return; const x=c.getContext('2d');
+  const W=c.width=c.clientWidth||1000, H=c.height;
+  x.clearRect(0,0,W,H);
+  if(!candles || candles.length<2){ x.fillStyle='#9aa7b4'; x.font='13px sans-serif';
+    x.fillText('chart data unavailable — is the feed/PC on?',12,28); c.__pts=[]; return; }
+  const pad={l:58,r:12,t:12,b:20};
+  let lo=Infinity,hi=-Infinity;
+  candles.forEach(k=>{ if(k[3]<lo)lo=k[3]; if(k[2]>hi)hi=k[2]; });
+  const pv=(hi-lo)*0.06||1; lo-=pv; hi+=pv;
+  const n=candles.length, cw=(W-pad.l-pad.r)/n;
+  const yp=v=>pad.t+(hi-v)/(hi-lo)*(H-pad.t-pad.b);
+  const dd=decFor(_symbol);
+  x.strokeStyle='rgba(255,255,255,.12)'; x.lineWidth=1;
+  x.beginPath(); x.moveTo(pad.l,pad.t); x.lineTo(pad.l,H-pad.b); x.lineTo(W-pad.r,H-pad.b); x.stroke();
+  x.fillStyle='#93a1b0'; x.font="10px 'JetBrains Mono',monospace"; x.textAlign='right';
+  [lo,(lo+hi)/2,hi].forEach(v=>x.fillText(v.toFixed(dd),pad.l-6,yp(v)+3));
+  const pts=[];
+  candles.forEach((k,i)=>{
+    const o=k[1],h=k[2],l=k[3],cl=k[4];
+    const cx=pad.l+i*cw+cw/2, up=cl>=o, col=up?'#37d67a':'#ff5c6c';
+    x.strokeStyle=col; x.fillStyle=col; x.lineWidth=1;
+    x.beginPath(); x.moveTo(cx,yp(h)); x.lineTo(cx,yp(l)); x.stroke();     // wick
+    const bw=Math.max(1.5,cw*0.62), yo=yp(o), yc=yp(cl);
+    x.fillRect(cx-bw/2, Math.min(yo,yc), bw, Math.max(1,Math.abs(yc-yo))); // body
+    const when=k[0]?(' · '+new Date(k[0]).toLocaleString([],{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})):'';
+    pts.push({px:cx,text:'<b>O</b> '+o.toFixed(dd)+' <b>H</b> '+h.toFixed(dd)+' <b>L</b> '+l.toFixed(dd)+' <b>C</b> '+cl.toFixed(dd)+when});
+  });
+  c.__pts=pts;
+}
+async function loadCandles(){
+  const sym=_symbol, tf=_tf;
+  try{
+    const r=await (await fetch('/ohlc?symbol='+sym+'&tf='+tf,{cache:'no-store'})).json();
+    if(sym!==_symbol) return;
+    drawCandles(r.candles||[]);
+    const broker=(sym==='XAUUSD' && r.candles && r.candles.length);
+    $('candleMeta').textContent='· '+sym+' · '+tf+' · '+(broker?'● broker (MT5)':'○ market feed');
+  }catch(e){}
+}
+
 async function refresh(){
   const sym=_symbol;   // lock the symbol for this render; abandon if it changes mid-flight
   try{
@@ -972,7 +1020,7 @@ function attachHover(cv){
   });
   cv.addEventListener('mouseleave',()=>{ chartTip.hidden=true; });
 }
-attachHover($('evtChart')); attachHover($('spark'));
+attachHover($('evtChart')); attachHover($('spark')); attachHover($('candleChart'));
 
 // --- instrument menu (multi-symbol) ---
 $('symSel').value=_symbol;
@@ -980,7 +1028,7 @@ $('symSel').addEventListener('change',e=>{
   _symbol=e.target.value;
   try{ localStorage.setItem('gmi_symbol',_symbol); }catch(_){}
   _priceSeries=[]; $('detailCard').hidden=true;
-  loadSeries(); pollQuotes(); refresh(); loadMarketSize(_symbol);
+  loadSeries(); pollQuotes(); refresh(); loadMarketSize(_symbol); loadCandles();
 });
 // custom glass dropdown that drives the (hidden) native <select>
 (function(){
@@ -1029,7 +1077,7 @@ makeDD($('visTf'), true);
 $('tfSel').value=_tf;
 $('tfSel').addEventListener('change',e=>{
   _tf=e.target.value; try{ localStorage.setItem('gmi_tf',_tf); }catch(_){}
-  refresh();
+  refresh(); loadCandles();
 });
 
 // --- AI chart-screenshot analysis (vision) ---
@@ -1166,6 +1214,7 @@ async function wlAdd(){
 })();
 
 loadSeries(); setInterval(loadSeries, 60000);
+loadCandles(); setInterval(loadCandles, 30000);
 loadHeatmap(); setInterval(loadHeatmap, 60000);
 renderWatch(); setInterval(renderWatch, 60000);
 loadMarketSize(_symbol); setInterval(function(){ loadMarketSize(_symbol); }, 12000);

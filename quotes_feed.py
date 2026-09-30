@@ -25,6 +25,26 @@ from datetime import datetime, timezone
 
 _UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 _URL = "https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=1m&range=1d"
+_CHART = "https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=%s&range=%s"
+# candle timeframes -> (yahoo interval, range) — matches the dashboard tf selector
+_TFMAP = {"intraday": ("5m", "5d"), "swing": ("1d", "3mo"), "position": ("1wk", "2y")}
+
+
+def _ohlc_from(res):
+    ts = res.get("timestamp") or []
+    q = (res.get("indicators", {}).get("quote") or [{}])[0]
+    o, h, l, c = q.get("open") or [], q.get("high") or [], q.get("low") or [], q.get("close") or []
+    out = []
+    for i, t in enumerate(ts):
+        try:
+            oo, hh, ll, cc = o[i], h[i], l[i], c[i]
+            if None in (oo, hh, ll, cc):
+                continue
+            out.append([int(t) * 1000, round(float(oo), 5), round(float(hh), 5),
+                        round(float(ll), 5), round(float(cc), 5)])
+        except Exception:
+            continue
+    return out
 
 # internal symbol -> (Yahoo ticker, decimals, display label)
 SYMS = {
@@ -47,6 +67,8 @@ SERIES_STEP = 45
 SERIES_MAX = 480
 MT5_QUOTE = os.environ.get("GBAI_MT5_QUOTE",
     r"C:\Users\ziaal\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\GoldBrainAI_Quote.txt")
+_BARS_FILE = os.environ.get("GBAI_MT5_BARS",
+    r"C:\Users\ziaal\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\GoldBrainAI_Bars.csv")
 
 
 def _get(url, timeout=12):
@@ -236,6 +258,77 @@ class QuotesFeed:
             return intr
         except Exception:
             return c[1] if c else []
+
+    def ingest_bars(self, data):
+        """Accept BROKER OHLC bars pushed from the local PC (the EA writes real MT5
+        bars to GoldBrainAI_Bars.csv). data = {"M15":[[o,h,l,c],...], "D1":[...], "W1":[...]}."""
+        try:
+            if isinstance(data, dict) and any(data.get(k) for k in ("M15", "D1", "W1")):
+                self._pushed_bars = data
+                self._pushed_bars_ts = time.time()
+                return True
+        except Exception:
+            pass
+        return False
+
+    def _broker_candles(self, tf):
+        """Real broker gold candles for the chart. tf intraday->M15, swing->D1, position->W1.
+        Reads the EA's local bars file; on the cloud uses whatever the PC pushed."""
+        btf = {"intraday": "M15", "swing": "D1", "position": "W1"}.get(tf, "M15")
+        step_ms = {"M15": 15 * 60000, "D1": 86400000, "W1": 604800000}[btf]
+        rows = None
+        # local: the EA's bars file
+        try:
+            if os.path.exists(_BARS_FILE) and time.time() - os.path.getmtime(_BARS_FILE) < 3600:
+                rows = []
+                with open(_BARS_FILE, "r", encoding="ascii", errors="ignore") as fh:
+                    for ln in fh:
+                        p = ln.strip().split(",")
+                        if len(p) == 5 and p[0] == btf:
+                            rows.append([float(p[1]), float(p[2]), float(p[3]), float(p[4])])
+        except Exception:
+            rows = None
+        # cloud: pushed bars
+        if not rows:
+            try:
+                if time.time() - getattr(self, "_pushed_bars_ts", 0) < 3600:
+                    rows = (getattr(self, "_pushed_bars", {}) or {}).get(btf)
+            except Exception:
+                rows = None
+        if not rows:
+            return []
+        now = int(time.time() * 1000)
+        n = len(rows)
+        return [[now - (n - 1 - i) * step_ms, r[0], r[1], r[2], r[3]] for i, r in enumerate(rows)]
+
+    def ohlc(self, symbol, tf="intraday"):
+        """OHLC candles. XAUUSD uses REAL BROKER bars (MT5); other symbols use Yahoo.
+        Cached (60s intraday / 15m else)."""
+        symbol = (symbol or "XAUUSD").upper()
+        if symbol == "XAUUSD":
+            bc = self._broker_candles(tf)
+            if bc:
+                return bc
+        if symbol not in SYMS:
+            return []
+        tf = tf if tf in _TFMAP else "intraday"
+        if not hasattr(self, "_ocache"):
+            self._ocache = {}
+        key = symbol + "|" + tf
+        cc = self._ocache.get(key)
+        ttl = 60 if tf == "intraday" else 900
+        if cc and (time.time() - cc[0]) < ttl:
+            return cc[1]
+        try:
+            iv, rng = _TFMAP[tf]
+            res = json.loads(_get(_CHART % (urllib.request.quote(SYMS[symbol][0]), iv, rng)))
+            bars = _ohlc_from(res["chart"]["result"][0])
+            if bars:
+                with self._lock:
+                    self._ocache[key] = (time.time(), bars)
+            return bars
+        except Exception:
+            return cc[1] if cc else []
 
     def snapshot(self):
         with self._lock:
