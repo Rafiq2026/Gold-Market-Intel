@@ -318,12 +318,25 @@
      list isn't hidden behind the next panel (each card is its own stacking context) */
   .card:has(.dd.open){z-index:130}
   @media(max-width:640px){ .evtwheel-wrap{gap:10px} .evtdial{width:46px;height:46px;font-size:20px} }
+  /* ---- RTL (Persian) : flip text direction; keep charts & numeric strings LTR ---- */
+  html[dir=rtl] body{direction:rtl}
+  html[dir=rtl] h1,html[dir=rtl] h2,html[dir=rtl] h3,html[dir=rtl] .disc,html[dir=rtl] .legend,
+  html[dir=rtl] .row,html[dir=rtl] .hmtile,html[dir=rtl] #anText,html[dir=rtl] #taText,
+  html[dir=rtl] #visText,html[dir=rtl] label{text-align:right}
+  html[dir=rtl] canvas{direction:ltr}
+  html[dir=rtl] table{text-align:right}
+  html[dir=rtl] table td,html[dir=rtl] table th{text-align:right}
+  html[dir=rtl] .meta{margin-left:0 !important;margin-right:14px}
+  html[dir=rtl] #chatIn{text-align:right}
+  /* numbers/prices/codes read left-to-right even inside RTL */
+  html[dir=rtl] .ticker,html[dir=rtl] #geoRisk,html[dir=rtl] #cotNet,html[dir=rtl] #cotPct,
+  html[dir=rtl] #cotWk,html[dir=rtl] #scoreVal,html[dir=rtl] #candleMeta{direction:ltr;unicode-bidi:isolate}
 </style>
 </head>
 <body>
 <header>
   <span class="dot" id="live"></span>
-  <h1><b>Gold</b> Market Intelligence</h1>
+  <h1 data-i18n-html="h1"><b>Gold</b> Market Intelligence</h1>
   <select class="symsel" id="symSel" title="Instrument" style="display:none">
     <option value="XAUUSD">Gold · XAUUSD</option>
     <option value="XAUEUR">Gold · EUR (XAUEUR)</option>
@@ -342,24 +355,29 @@
     <div class="dd-list" id="symDDlist"></div>
   </div>
   <div class="ticker" id="ticker"></div>
-  <button class="abtn" id="muteBtn" title="Mute / unmute sounds" style="margin-left:auto">🔊</button>
-  <button class="abtn" id="alertToggle" title="Alerts &amp; sounds" style="margin-left:8px">🔔 Alerts</button>
-  <div class="meta" id="meta" style="margin-left:14px">connecting…</div>
+  <select id="langSel" title="Language" style="margin-left:auto;display:none">
+    <option value="en">🌐 EN</option>
+    <option value="fa">🌐 فا</option>
+    <option value="de">🌐 DE</option>
+  </select>
+  <button class="abtn" id="muteBtn" data-i18n-title="mute_title" title="Mute / unmute sounds" style="margin-left:8px">🔊</button>
+  <button class="abtn" id="alertToggle" data-i18n="alerts_btn" data-i18n-title="alerts_title" title="Alerts &amp; sounds" style="margin-left:8px">🔔 Alerts</button>
+  <div class="meta" id="meta" data-i18n="connecting" style="margin-left:14px">connecting…</div>
 </header>
 
 <!-- Alerts & sounds panel -->
 <div id="alertPanel">
-  <h3>🔔 Alerts &amp; Sounds</h3>
-  <label>Master <span class="switch"><input type="checkbox" id="alMaster"><span class="slider"></span></span></label>
-  <label>Sound <span class="switch"><input type="checkbox" id="alSound" checked><span class="slider"></span></span></label>
-  <label>Desktop notification <span class="switch"><input type="checkbox" id="alNotif" checked><span class="slider"></span></span></label>
-  <label>Volume <input type="range" id="alVol" min="0" max="100" value="70"></label>
-  <label>High-impact event alert (min before) <input type="number" id="alEvtMin" min="1" max="180" value="15"></label>
-  <label>Alert on composite flip <span class="switch"><input type="checkbox" id="alFlip" checked><span class="slider"></span></span></label>
-  <label>Gold price level <input type="text" id="alLevel" placeholder="e.g. 4110"></label>
-  <label>Alert on level break <span class="switch"><input type="checkbox" id="alLevelOn"><span class="slider"></span></span></label>
-  <button class="abtn" id="alTest" style="margin-top:8px;width:100%">▶ Test sound</button>
-  <div class="afeed" id="alFeed"><div class="neu">No alerts yet — armed and watching.</div></div>
+  <h3 data-i18n="al_head">🔔 Alerts &amp; Sounds</h3>
+  <label><span data-i18n="al_master">Master</span> <span class="switch"><input type="checkbox" id="alMaster"><span class="slider"></span></span></label>
+  <label><span data-i18n="al_sound">Sound</span> <span class="switch"><input type="checkbox" id="alSound" checked><span class="slider"></span></span></label>
+  <label><span data-i18n="al_notif">Desktop notification</span> <span class="switch"><input type="checkbox" id="alNotif" checked><span class="slider"></span></span></label>
+  <label><span data-i18n="al_vol">Volume</span> <input type="range" id="alVol" min="0" max="100" value="70"></label>
+  <label><span data-i18n="al_evtmin">High-impact event alert (min before)</span> <input type="number" id="alEvtMin" min="1" max="180" value="15"></label>
+  <label><span data-i18n="al_flip">Alert on composite flip</span> <span class="switch"><input type="checkbox" id="alFlip" checked><span class="slider"></span></span></label>
+  <label><span data-i18n="al_level">Gold price level</span> <input type="text" id="alLevel" data-i18n-ph="al_level_ph" placeholder="e.g. 4110"></label>
+  <label><span data-i18n="al_levelon">Alert on level break</span> <span class="switch"><input type="checkbox" id="alLevelOn"><span class="slider"></span></span></label>
+  <button class="abtn" id="alTest" data-i18n="al_test" style="margin-top:8px;width:100%">▶ Test sound</button>
+  <div class="afeed" id="alFeed"><div class="neu" data-i18n="al_none">No alerts yet — armed and watching.</div></div>
 </div>
 
 <div class="wrap">
@@ -377,37 +395,37 @@
       <div class="legend" id="compFormula">
         Bias = 0.6·News + 0.4·COT &nbsp;•&nbsp; −100 bearish … +100 bullish (for gold)
       </div>
-      <div class="disc">Context only — a read of macro pressure, NOT a trade signal.</div>
+      <div class="disc" data-i18n="disc_comp">Context only — a read of macro pressure, NOT a trade signal.</div>
     </div>
 
     <!-- News / geopolitics -->
     <div class="card">
-      <h2>News &amp; Geopolitics</h2>
-      <div class="row"><span>Geo risk</span><span id="geoRisk">–</span></div>
+      <h2 data-i18n="news_hdr">News &amp; Geopolitics</h2>
+      <div class="row"><span data-i18n="geo_risk">Geo risk</span><span id="geoRisk">–</span></div>
       <div class="barbox"><div class="barfill" id="geoBar" style="width:0%;background:var(--amber)"></div></div>
-      <div class="row" style="margin-top:8px"><span>Safe-haven bias</span><span id="geoBias">–</span></div>
-      <div class="row"><span>Econ lockout</span><span id="econLock">–</span></div>
-      <div class="row"><span>Next event</span><span id="nextEvt">–</span></div>
-      <div class="row"><span>Risk drivers</span></div>
+      <div class="row" style="margin-top:8px"><span data-i18n="safe_haven">Safe-haven bias</span><span id="geoBias">–</span></div>
+      <div class="row"><span data-i18n="econ_lock">Econ lockout</span><span id="econLock">–</span></div>
+      <div class="row"><span data-i18n="next_event">Next event</span><span id="nextEvt">–</span></div>
+      <div class="row"><span data-i18n="risk_drivers">Risk drivers</span></div>
       <div id="geoCats" style="color:var(--dim);font-size:12px">—</div>
-      <div class="row" style="border:0;margin-top:6px"><span>Headline</span></div>
+      <div class="row" style="border:0;margin-top:6px"><span data-i18n="headline">Headline</span></div>
       <div id="headline" style="color:var(--dim);font-size:12px">—</div>
     </div>
 
     <!-- COT positioning -->
     <div class="card">
-      <h2>CFTC Positioning (weekly)</h2>
-      <div class="row"><span>Speculators</span><span id="cotLabel">–</span></div>
-      <div class="row"><span>Net</span><span id="cotNet">–</span></div>
-      <div class="row"><span>% of open interest</span><span id="cotPct">–</span></div>
-      <div class="row"><span>Weekly change</span><span id="cotWk">–</span></div>
-      <div class="row"><span>As of / conf</span><span id="cotMeta">–</span></div>
-      <div class="disc">Weekly report — NOT a live trader count.</div>
+      <h2 data-i18n="cot_hdr">CFTC Positioning (weekly)</h2>
+      <div class="row"><span data-i18n="speculators">Speculators</span><span id="cotLabel">–</span></div>
+      <div class="row"><span data-i18n="net">Net</span><span id="cotNet">–</span></div>
+      <div class="row"><span data-i18n="pct_oi">% of open interest</span><span id="cotPct">–</span></div>
+      <div class="row"><span data-i18n="weekly_change">Weekly change</span><span id="cotWk">–</span></div>
+      <div class="row"><span data-i18n="as_of">As of / conf</span><span id="cotMeta">–</span></div>
+      <div class="disc" data-i18n="disc_cot">Weekly report — NOT a live trader count.</div>
     </div>
 
     <!-- Live candlestick chart (broker OHLC for gold; timeframe = the TA selector) -->
     <div class="card full">
-      <h2>Live Chart <span id="candleMeta" class="sub"></span></h2>
+      <h2><span data-i18n="live_chart">Live Chart</span> <span id="candleMeta" class="sub"></span></h2>
       <div style="display:flex;justify-content:flex-end;margin:-6px 0 8px">
         <select id="candleTf" class="symsel">
           <option value="M5">M5</option>
@@ -420,41 +438,41 @@
         </select>
       </div>
       <canvas id="candleChart" width="1000" height="300" style="height:300px"></canvas>
-      <div class="disc" id="candleNote">Live candlestick chart · pick a timeframe above · hover a candle for its OHLC.</div>
+      <div class="disc" id="candleNote" data-i18n="candle_note">Live candlestick chart · pick a timeframe above · hover a candle for its OHLC.</div>
     </div>
 
     <!-- AI analyst paragraph -->
     <div class="card full">
-      <h2>AI Analyst <span id="anLean" class="sub"></span></h2>
-      <div id="anText" style="font-size:14px;line-height:1.6;color:var(--txt)">preparing analysis…</div>
-      <div class="disc">Auto-written from live data — price, geopolitics, positioning, and the next event vs its real prior-data trend. Context, not a trade signal.</div>
+      <h2><span data-i18n="ai_analyst">AI Analyst</span> <span id="anLean" class="sub"></span></h2>
+      <div id="anText" style="font-size:14px;line-height:1.6;color:var(--txt)"></div>
+      <div class="disc" data-i18n="disc_analyst">Auto-written from live data — price, geopolitics, positioning, and the next event vs its real prior-data trend. Context, not a trade signal.</div>
     </div>
 
     <!-- Cross-asset heatmap (Finviz-style, legal source) -->
     <div class="card full">
-      <h2>Cross-Asset Heatmap <span class="sub">— today's moves in gold's drivers</span></h2>
-      <div id="hmGrid" class="hmgrid">loading…</div>
+      <h2><span data-i18n="heatmap_hdr">Cross-Asset Heatmap</span> <span class="sub" data-i18n="heatmap_sub">— today's moves in gold's drivers</span></h2>
+      <div id="hmGrid" class="hmgrid" data-i18n="loading">loading…</div>
       <div id="hmRead" class="disc"></div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px">
-        <input id="wlInput" placeholder="add any symbol: EURUSD, AAPL, oil, nasdaq, ETH…" style="flex:1;min-width:180px;padding:5px 8px;font-size:12px;background:var(--panel2);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--txt)">
-        <button id="wlAdd" class="symsel" style="cursor:pointer;padding:5px 12px">+ Add</button>
+        <input id="wlInput" data-i18n-ph="wl_ph" placeholder="add any symbol: EURUSD, AAPL, oil, nasdaq, ETH…" style="flex:1;min-width:180px;padding:5px 8px;font-size:12px;background:var(--panel2);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--txt)">
+        <button id="wlAdd" class="symsel" data-i18n="wl_add" style="cursor:pointer;padding:5px 12px">+ Add</button>
         <span id="wlMsg" class="sub"></span>
       </div>
       <div id="wlGrid" class="hmgrid" style="margin-top:8px"></div>
-      <div class="disc">Your own watchlist — type a currency pair, stock, index or commodity to track its move. Saved on this device.</div>
+      <div class="disc" data-i18n="disc_watch">Your own watchlist — type a currency pair, stock, index or commodity to track its move. Saved on this device.</div>
     </div>
 
     <!-- Money in the market (real proxies: OI, $ volume, trader count) -->
     <div class="card full">
-      <h2 id="msHdr">Money in the Market <span class="sub">— real activity, not a guess</span></h2>
+      <h2 id="msHdr"><span data-i18n="money_hdr">Money in the Market</span> <span class="sub" data-i18n="money_sub">— real activity, not a guess</span></h2>
       <div class="hmgrid">
-        <div class="hmtile"><div class="nm">Open Interest</div><div class="pc" id="msOI" style="font-size:15px">–</div><div class="px">money committed</div></div>
-        <div class="hmtile"><div class="nm" id="msVolLbl">Volume ($)</div><div class="pc" id="msVol" style="font-size:15px">–</div><div class="px">money traded</div></div>
-        <div class="hmtile"><div class="nm">Reportable traders</div><div class="pc" id="msTraders" style="font-size:15px">–</div><div class="px">CFTC large traders</div></div>
-        <div class="hmtile"><div class="nm">Buy / sell lean</div><div class="pc" id="msLean" style="font-size:14px">–</div><div class="px" id="msSrc">source</div></div>
+        <div class="hmtile"><div class="nm" data-i18n="open_interest">Open Interest</div><div class="pc" id="msOI" style="font-size:15px">–</div><div class="px" data-i18n="money_committed">money committed</div></div>
+        <div class="hmtile"><div class="nm" id="msVolLbl" data-i18n="volume_usd">Volume ($)</div><div class="pc" id="msVol" style="font-size:15px">–</div><div class="px" data-i18n="money_traded">money traded</div></div>
+        <div class="hmtile"><div class="nm" data-i18n="reportable">Reportable traders</div><div class="pc" id="msTraders" style="font-size:15px">–</div><div class="px" data-i18n="cftc_large">CFTC large traders</div></div>
+        <div class="hmtile"><div class="nm" data-i18n="buysell_lean">Buy / sell lean</div><div class="pc" id="msLean" style="font-size:14px">–</div><div class="px" id="msSrc" data-i18n="source">source</div></div>
       </div>
       <div id="msFlowWrap" style="margin-top:6px;display:none">
-        <div class="row" style="margin-bottom:2px"><span class="sub">Live broker order-flow (gold)</span><span id="msFlowTxt" class="sub"></span></div>
+        <div class="row" style="margin-bottom:2px"><span class="sub" data-i18n="broker_flow">Live broker order-flow (gold)</span><span id="msFlowTxt" class="sub"></span></div>
         <div class="barbox" style="display:flex;height:14px"><div id="msFlowBuy" class="barfill up" style="background:var(--up)"></div><div id="msFlowSell" class="barfill down" style="background:var(--down)"></div></div>
       </div>
       <div class="disc" id="msNote"></div>
@@ -462,28 +480,28 @@
 
     <!-- AI technical analysis -->
     <div class="card full">
-      <div style="color:var(--amber);font-size:12px;margin-bottom:8px">⚠️ AI technical analysis only — NOT trading advice or a recommendation. Trades are your own responsibility.</div>
-      <h2>Technical Analysis
+      <div style="color:var(--amber);font-size:12px;margin-bottom:8px" data-i18n="ta_warn">⚠️ AI technical analysis only — NOT trading advice or a recommendation. Trades are your own responsibility.</div>
+      <h2><span data-i18n="ta_hdr">Technical Analysis</span>
         <select id="tfSel" class="symsel" style="margin-left:6px;padding:3px 6px;font-size:12px">
-          <option value="intraday">Intraday</option>
-          <option value="swing">Swing · daily</option>
-          <option value="position">Position · weekly</option>
+          <option value="intraday" data-i18n="tf_intraday">Intraday</option>
+          <option value="swing" data-i18n="tf_swing">Swing · daily</option>
+          <option value="position" data-i18n="tf_position">Position · weekly</option>
         </select>
         <span id="taTrend" class="sub"></span>
       </h2>
       <div id="taLevels" class="legend" style="margin-bottom:6px">—</div>
-      <div id="taText" style="font-size:14px;line-height:1.6;color:var(--txt)">analyzing chart…</div>
+      <div id="taText" style="font-size:14px;line-height:1.6;color:var(--txt)" data-i18n="analyzing_chart">analyzing chart…</div>
     </div>
 
     <!-- AI chart-screenshot analysis (vision): technical + fundamental -->
     <div class="card full">
-      <div style="color:var(--amber);font-size:12px;margin-bottom:8px">⚠️ AI analysis only — NOT trading advice. Upload your own chart; trades are your own responsibility.</div>
-      <h2>AI Chart Analysis <span class="sub">— upload a screenshot (technical + fundamental)</span></h2>
+      <div style="color:var(--amber);font-size:12px;margin-bottom:8px" data-i18n="vis_warn">⚠️ AI analysis only — NOT trading advice. Upload your own chart; trades are your own responsibility.</div>
+      <h2><span data-i18n="vis_hdr">AI Chart Analysis</span> <span class="sub" data-i18n="vis_sub">— upload a screenshot (technical + fundamental)</span></h2>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
         <input id="visFile" type="file" accept="image/*" style="font-size:12px">
-        <label class="sub" style="margin-left:4px">Timeframe
+        <label class="sub" style="margin-left:4px"><span data-i18n="vis_tf">Timeframe</span>
           <select id="visTf" class="symsel" style="margin-left:4px;padding:3px 6px;font-size:12px">
-            <option value="">Auto-detect</option>
+            <option value="" data-i18n="vis_auto">Auto-detect</option>
             <option value="M1">M1 · scalp</option>
             <option value="M5">M5 · scalp</option>
             <option value="M15">M15</option>
@@ -494,7 +512,7 @@
             <option value="W1">W1 · position</option>
           </select>
         </label>
-        <button id="visBtn" class="symsel" style="cursor:pointer;padding:4px 12px">Analyze</button>
+        <button id="visBtn" class="symsel" data-i18n="vis_analyze" style="cursor:pointer;padding:4px 12px">Analyze</button>
         <span id="visStatus" class="sub"></span>
       </div>
       <img id="visPrev" style="max-width:100%;max-height:220px;border-radius:8px;display:none;margin-bottom:8px" />
@@ -503,29 +521,29 @@
 
     <!-- Events -->
     <div class="card full">
-      <h2 id="evtHdr">Upcoming High-Impact Events → expected reaction</h2>
+      <h2 id="evtHdr" data-i18n="evt_hdr">Upcoming High-Impact Events → expected reaction</h2>
       <div class="evtwheel-wrap">
-        <div id="evtWheel" class="evtwheel"><div class="neu" style="padding:20px">loading…</div></div>
-        <button id="evtDial" class="evtdial" title="Hover to rotate the events">⟳</button>
+        <div id="evtWheel" class="evtwheel"><div class="neu" style="padding:20px" data-i18n="evt_loading">loading…</div></div>
+        <button id="evtDial" class="evtdial" data-i18n-title="evt_dial_title" title="Hover to rotate the events">⟳</button>
       </div>
       <span id="evtColHdr" style="display:none"></span>
-      <div class="disc">Hover the ⟳ dial to rotate · click an event for its full history &amp; expected-reaction evidence. Expectation-based, sharpened with REAL FRED actuals.</div>
+      <div class="disc" data-i18n="disc_events">Hover the ⟳ dial to rotate · click an event for its full history &amp; expected-reaction evidence. Expectation-based, sharpened with REAL FRED actuals.</div>
     </div>
 
     <!-- Prediction scorecard: track record (predicted vs real gold reaction) -->
     <div class="card full">
-      <h2 id="scHdr">Prediction Scorecard <span id="scHitRate" class="sub"></span></h2>
-      <div id="scSummary" class="legend">building record…</div>
+      <h2 id="scHdr"><span data-i18n="sc_hdr">Prediction Scorecard</span> <span id="scHitRate" class="sub"></span></h2>
+      <div id="scSummary" class="legend" data-i18n="sc_building">building record…</div>
       <div style="overflow-x:auto"><table id="scTbl">
-        <thead><tr><th>When</th><th>Cur</th><th>Event</th><th class="r">Fcst / Prev</th><th>Predicted</th><th id="scNetHdr">Net (2h)</th><th>Result</th></tr></thead>
-        <tbody id="scBody"><tr><td colspan="7" class="neu">no graded events yet</td></tr></tbody>
+        <thead><tr><th data-i18n="th_when">When</th><th data-i18n="th_cur">Cur</th><th data-i18n="th_event">Event</th><th class="r" data-i18n="th_fcst">Fcst / Prev</th><th data-i18n="th_predicted">Predicted</th><th id="scNetHdr" data-i18n="th_net">Net (2h)</th><th data-i18n="th_result">Result</th></tr></thead>
+        <tbody id="scBody"><tr><td colspan="7" class="neu" data-i18n="sc_none">no graded events yet</td></tr></tbody>
       </table></div>
-      <div class="disc">Directional calls only, graded vs the selected symbol's real isolated 2-h reaction. “flat” = move under 0.05% (noise). Each event is graded once, ~2h after release, then frozen — a permanent track record.</div>
+      <div class="disc" data-i18n="disc_sc">Directional calls only, graded vs the selected symbol's real isolated 2-h reaction. “flat” = move under 0.05% (noise). Each event is graded once, ~2h after release, then frozen — a permanent track record.</div>
     </div>
 
     <!-- Event drill-down: real history + upcoming forecast -->
     <div class="card full" id="detailCard" hidden>
-      <h2 id="detailTitle">Event detail</h2>
+      <h2 id="detailTitle" data-i18n="detail_title">Event detail</h2>
       <canvas id="evtChart" width="1000" height="200"></canvas>
       <div class="legend" id="detailLegend"></div>
       <div id="detailNote" style="color:var(--dim);font-size:12px;margin-top:8px"></div>
@@ -533,21 +551,14 @@
 
     <!-- Ask Gold Brain AI (live market chat) -->
     <div class="card full">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-        <h2 style="margin:0">Ask Gold Brain AI <span id="chatLeft" class="sub"></span></h2>
-        <select id="chatLang" aria-label="Answer language">
-          <option value="en">English</option>
-          <option value="fa">فارسی</option>
-          <option value="de">Deutsch</option>
-        </select>
-      </div>
+      <h2 data-i18n="ask_ai">Ask Gold Brain AI</h2><span id="chatLeft" class="sub"></span>
       <div id="chatBox">
         <div id="chatMsgs"></div>
         <div id="chatRow">
-          <input id="chatIn" type="text" maxlength="700" placeholder="Ask about gold, levels, news, the next event…" autocomplete="off">
-          <button id="chatSend" type="button">Send</button>
+          <input id="chatIn" type="text" maxlength="700" data-i18n-ph="chat_ph" placeholder="Ask about gold, levels, news, the next event…" autocomplete="off">
+          <button id="chatSend" type="button" data-i18n="chat_send">Send</button>
         </div>
-        <div class="disc" id="chatNote">Answers use the dashboard's live market context. Limited number of questions. Not financial advice.</div>
+        <div class="disc" id="chatNote" data-i18n="chat_note">Answers use the dashboard's live market context. Limited number of questions. Not financial advice.</div>
       </div>
     </div>
   </div>
@@ -559,6 +570,220 @@ const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 
 function cls(v){ return v>0.08?'up':v<-0.08?'down':'neu'; }
 function fmtSigned(n){ return (n>0?'+':'')+n; }
+
+// ===================== i18n (EN / FA / DE) — whole-dashboard language =====================
+const I18N = {
+  en: {
+    doc_title:"Gold Market Intelligence", h1:"<b>Gold</b> Market Intelligence",
+    mute_title:"Mute / unmute sounds", alerts_btn:"🔔 Alerts", alerts_title:"Alerts & sounds",
+    connecting:"connecting…", updated:"updated", news_ok:"news", cot_live:"COT live", events_lbl:"events",
+    al_head:"🔔 Alerts & Sounds", al_master:"Master", al_sound:"Sound", al_notif:"Desktop notification",
+    al_vol:"Volume", al_evtmin:"High-impact event alert (min before)", al_flip:"Alert on composite flip",
+    al_level:"Gold price level", al_levelon:"Alert on level break", al_test:"▶ Test sound",
+    al_none:"No alerts yet — armed and watching.", al_level_ph:"e.g. 4110",
+    comp_hdr:"{a} Drivers (composite)", disc_comp:"Context only — a read of macro pressure, NOT a trade signal.",
+    bullish_lean:"BULLISH lean", bearish_lean:"BEARISH lean", neutral_lean:"NEUTRAL",
+    news_hdr:"News & Geopolitics", geo_risk:"Geo risk", safe_haven:"Safe-haven bias",
+    econ_lock:"Econ lockout", next_event:"Next event", risk_drivers:"Risk drivers", headline:"Headline",
+    risk_off:"risk-off (bullish gold)", risk_on:"risk-on", neutral:"neutral",
+    locked:"LOCKED", clear:"clear", none_detected:"none detected",
+    cot_hdr:"CFTC Positioning (weekly)", speculators:"Speculators", net:"Net", pct_oi:"% of open interest",
+    weekly_change:"Weekly change", as_of:"As of / conf", disc_cot:"Weekly report — NOT a live trader count.",
+    unavailable:"unavailable", bullish_x:"bullish {s}", bearish_x:"bearish {s}",
+    live_chart:"Live Chart", candle_note:"Live candlestick chart · pick a timeframe above · hover a candle for its OHLC.",
+    chart_unavail:"chart data unavailable — is the feed/PC on?",
+    ai_analyst:"AI Analyst", disc_analyst:"Auto-written from live data — price, geopolitics, positioning, and the next event vs its real prior-data trend. Context, not a trade signal.",
+    lean_word_bullish:"bullish", lean_word_bearish:"bearish", lean_word_neutral:"neutral", lean_suffix:"lean",
+    heatmap_hdr:"Cross-Asset Heatmap", heatmap_sub:"— today's moves in gold's drivers",
+    wl_ph:"add any symbol: EURUSD, AAPL, oil, nasdaq, ETH…", wl_add:"+ Add",
+    disc_watch:"Your own watchlist — type a currency pair, stock, index or commodity to track its move. Saved on this device.",
+    money_hdr:"Money in the Market", money_sub:"— real activity, not a guess",
+    open_interest:"Open Interest", money_committed:"money committed", volume_usd:"Volume ($)", money_traded:"money traded",
+    reportable:"Reportable traders", cftc_large:"CFTC large traders", buysell_lean:"Buy / sell lean", source:"source",
+    broker_flow:"Live broker order-flow (gold)",
+    ta_warn:"⚠️ AI technical analysis only — NOT trading advice or a recommendation. Trades are your own responsibility.",
+    ta_hdr:"Technical Analysis", tf_intraday:"Intraday", tf_swing:"Swing · daily", tf_position:"Position · weekly",
+    ta_support:"Support", ta_resistance:"Resistance", ta_range:"range", ta_now:"now",
+    ta_broker:"● broker data", ta_feed:"○ market feed", analyzing_chart:"analyzing chart…",
+    vis_warn:"⚠️ AI analysis only — NOT trading advice. Upload your own chart; trades are your own responsibility.",
+    vis_hdr:"AI Chart Analysis", vis_sub:"— upload a screenshot (technical + fundamental)",
+    vis_tf:"Timeframe", vis_auto:"Auto-detect", vis_analyze:"Analyze",
+    evt_hdr:"Upcoming High-Impact Events → expected reaction", evt_hdr_x:"Upcoming High-Impact Events → expected reaction ({s})",
+    evt_dial_title:"Hover to rotate the events",
+    disc_events:"Hover the ⟳ dial to rotate · click an event for its full history & expected-reaction evidence. Expectation-based, sharpened with REAL FRED actuals.",
+    evt_none:"no upcoming events right now — the calendar feed may still be loading.",
+    evt_loading:"loading…", impact_high:"High", impact_med:"Med",
+    inline_watch:"in-line · watch surprise", surprise_driven:"surprise-driven", reacted_now:"REACTED · now {v}",
+    sc_hdr:"Prediction Scorecard", sc_hdr_x:"Prediction Scorecard · {s} ", sc_building:"building record…",
+    th_when:"When", th_cur:"Cur", th_event:"Event", th_fcst:"Fcst / Prev", th_predicted:"Predicted",
+    th_net:"Net (2h)", th_net_x:"{s} net (2h)", th_result:"Result", sc_none:"no graded events yet",
+    disc_sc:"Directional calls only, graded vs the selected symbol's real isolated 2-h reaction. “flat” = move under 0.05% (noise). Each event is graded once, ~2h after release, then frozen — a permanent track record.",
+    sc_hit:"✓ hit", sc_miss:"✗ miss", sc_flat:"– flat", pred_bear:"↓ bearish", pred_bull:"↑ bullish",
+    sc_dir_calls:"Directional calls:", sc_hits:"hits", sc_misses:"misses", sc_flatw:"flat",
+    sc_no_calls:"No graded calls for {s} yet — the next high-impact release is scored ~2h after it prints.",
+    sc_none_x:"no graded events for {s} yet", pct_hit:"% hit",
+    detail_title:"Event detail", evt_reaction_title:"{t} · reaction around release",
+    react_low:"low", react_high:"high", react_net:"net", react_dashed:"(dashed = release)",
+    react_tracking:"tracking — building the price window around this release…",
+    react_nodata:"not enough price data around this event yet — building…", release:"release",
+    d_forecast:"Forecast", d_previous:"Previous", d_impact:"Impact", d_expected:"Expected",
+    inline_priced:"In-line consensus — largely priced in", d_nofred:"No FRED price history for this release — the read below is expectation-based.",
+    d_bars:"Bars = real actuals (FRED {series}) · dashed = 6-mo avg {mean}{unit} · ", d_goldbar:"gold bar = upcoming forecast {f}",
+    ask_ai:"Ask Gold Brain AI", chat_ph:"Ask about gold, levels, news, the next event…",
+    chat_note:"Answers use the dashboard's live market context. Limited number of questions. Not financial advice.",
+    chat_intro:"Ask me about gold, key levels, the news backdrop or the next event.",
+    chat_off:"Chat is temporarily unavailable.", chat_limit:"Question limit reached for now — please try again a bit later.",
+    chat_neterr:"Network error — try again.", chat_left:"· {n} left", question:"question", questions:"questions",
+    chat_send:"Send", local:"local", loading:"loading…",
+    tr_up:"up", tr_down:"down", tr_side:"sideways",
+  },
+  fa: {
+    doc_title:"هوش بازار طلا", h1:"هوشِ بازارِ <b>طلا</b>",
+    mute_title:"قطع/وصل صدا", alerts_btn:"🔔 هشدارها", alerts_title:"هشدارها و صداها",
+    connecting:"در حال اتصال…", updated:"به‌روزرسانی", news_ok:"اخبار", cot_live:"COT زنده", events_lbl:"رویدادها",
+    al_head:"🔔 هشدارها و صداها", al_master:"اصلی", al_sound:"صدا", al_notif:"اعلان دسکتاپ",
+    al_vol:"بلندی صدا", al_evtmin:"هشدار رویداد مهم (دقیقه قبل)", al_flip:"هشدار چرخش کامپوزیت",
+    al_level:"سطح قیمت طلا", al_levelon:"هشدار شکست سطح", al_test:"▶ تست صدا",
+    al_none:"هنوز هشداری نیست — آماده و در حال رصد.", al_level_ph:"مثلاً ۴۱۱۰",
+    comp_hdr:"محرک‌های {a} (کامپوزیت)", disc_comp:"فقط زمینه — سنجشِ فشارِ کلان، نه سیگنالِ معامله.",
+    bullish_lean:"تمایل صعودی", bearish_lean:"تمایل نزولی", neutral_lean:"خنثی",
+    news_hdr:"اخبار و ژئوپلیتیک", geo_risk:"ریسک ژئوپلیتیک", safe_haven:"تمایل امن‌طلبی",
+    econ_lock:"قفل اقتصادی", next_event:"رویداد بعدی", risk_drivers:"محرک‌های ریسک", headline:"تیتر",
+    risk_off:"ریسک‌گریزی (صعودی برای طلا)", risk_on:"ریسک‌پذیری", neutral:"خنثی",
+    locked:"قفل", clear:"باز", none_detected:"موردی یافت نشد",
+    cot_hdr:"موقعیت‌گیری CFTC (هفتگی)", speculators:"سفته‌بازان", net:"خالص", pct_oi:"٪ از بهرهٔ باز",
+    weekly_change:"تغییر هفتگی", as_of:"تاریخ / اطمینان", disc_cot:"گزارش هفتگی — نه شمارِ زندهٔ معامله‌گران.",
+    unavailable:"در دسترس نیست", bullish_x:"صعودی برای {s}", bearish_x:"نزولی برای {s}",
+    live_chart:"چارت زنده", candle_note:"چارت کندلیِ زنده · تایم‌فریم را بالا انتخاب کن · برای دیدنِ OHLC روی کندل نگه دار.",
+    chart_unavail:"داده‌ی چارت در دسترس نیست — آیا فید/کامپیوتر روشن است؟",
+    ai_analyst:"تحلیلگر هوشمند", disc_analyst:"خودکار از دادهٔ زنده — قیمت، ژئوپلیتیک، موقعیت‌گیری و رویدادِ بعدی در برابر روندِ واقعیِ داده‌های قبلی. زمینه، نه سیگنالِ معامله.",
+    lean_word_bullish:"صعودی", lean_word_bearish:"نزولی", lean_word_neutral:"خنثی", lean_suffix:"تمایل",
+    heatmap_hdr:"نقشهٔ حرارتیِ چنددارایی", heatmap_sub:"— حرکاتِ امروزِ محرک‌های طلا",
+    wl_ph:"هر نمادی اضافه کن: EURUSD، AAPL، نفت، نزدک، ETH…", wl_add:"+ افزودن",
+    disc_watch:"واچ‌لیستِ خودت — یک جفت‌ارز، سهم، شاخص یا کالا تایپ کن تا حرکتش رصد شود. روی این دستگاه ذخیره می‌شود.",
+    money_hdr:"پول در بازار", money_sub:"— فعالیتِ واقعی، نه حدس",
+    open_interest:"بهرهٔ باز", money_committed:"پولِ درگیر", volume_usd:"حجم ($)", money_traded:"پولِ معامله‌شده",
+    reportable:"معامله‌گرانِ گزارش‌شدنی", cftc_large:"معامله‌گرانِ بزرگِ CFTC", buysell_lean:"تمایلِ خرید/فروش", source:"منبع",
+    broker_flow:"جریانِ زندهٔ سفارشاتِ بروکر (طلا)",
+    ta_warn:"⚠️ فقط تحلیلِ تکنیکالِ هوش مصنوعی — نه توصیهٔ معاملاتی. مسئولیتِ معامله با خودت است.",
+    ta_hdr:"تحلیل تکنیکال", tf_intraday:"درون‌روز", tf_swing:"سوینگ · روزانه", tf_position:"پوزیشن · هفتگی",
+    ta_support:"حمایت", ta_resistance:"مقاومت", ta_range:"محدوده", ta_now:"اکنون",
+    ta_broker:"● دادهٔ بروکر", ta_feed:"○ فیدِ بازار", analyzing_chart:"در حال تحلیلِ چارت…",
+    vis_warn:"⚠️ فقط تحلیلِ هوش مصنوعی — نه توصیهٔ معاملاتی. چارتِ خودت را بارگذاری کن؛ مسئولیتِ معامله با خودت است.",
+    vis_hdr:"تحلیلِ چارت با هوش مصنوعی", vis_sub:"— یک اسکرین‌شات بارگذاری کن (تکنیکال + فاندامنتال)",
+    vis_tf:"تایم‌فریم", vis_auto:"تشخیص خودکار", vis_analyze:"تحلیل کن",
+    evt_hdr:"رویدادهای مهمِ پیشِ‌رو ← واکنشِ موردانتظار", evt_hdr_x:"رویدادهای مهمِ پیشِ‌رو ← واکنشِ موردانتظار ({s})",
+    evt_dial_title:"برای چرخاندنِ رویدادها نگه دار",
+    disc_events:"روی ⟳ نگه دار تا بچرخد · روی یک رویداد کلیک کن تا تاریخچهٔ کامل و شواهدِ واکنشِ موردانتظارش را ببینی. مبتنی بر انتظار، تیزشده با داده‌های واقعیِ FRED.",
+    evt_none:"فعلاً رویدادی پیشِ‌رو نیست — شاید فیدِ تقویم هنوز در حال بارگذاری است.",
+    evt_loading:"در حال بارگذاری…", impact_high:"بالا", impact_med:"متوسط",
+    inline_watch:"هم‌سطح · مراقبِ سورپرایز", surprise_driven:"سورپرایز-محور", reacted_now:"واکنش داد · اکنون {v}",
+    sc_hdr:"کارنامهٔ پیش‌بینی", sc_hdr_x:"کارنامهٔ پیش‌بینی · {s} ", sc_building:"در حال ساختِ کارنامه…",
+    th_when:"زمان", th_cur:"ارز", th_event:"رویداد", th_fcst:"پیش‌بینی / قبلی", th_predicted:"پیش‌بینی‌شده",
+    th_net:"خالص (۲س)", th_net_x:"خالصِ {s} (۲س)", th_result:"نتیجه", sc_none:"هنوز رویدادِ نمره‌داده‌شده‌ای نیست",
+    disc_sc:"فقط پیش‌بینیِ جهت، نمره‌داده در برابرِ واکنشِ واقعیِ ۲ساعتهٔ نمادِ انتخابی. «flat» = حرکتِ کمتر از ۰٫۰۵٪ (نویز). هر رویداد یک بار، حدودِ ۲ ساعت پس از انتشار نمره می‌گیرد و بعد ثابت می‌شود — کارنامه‌ای دائمی.",
+    sc_hit:"✓ درست", sc_miss:"✗ غلط", sc_flat:"– خنثی", pred_bear:"↓ نزولی", pred_bull:"↑ صعودی",
+    sc_dir_calls:"پیش‌بینیِ جهت:", sc_hits:"درست", sc_misses:"غلط", sc_flatw:"خنثی",
+    sc_no_calls:"هنوز پیش‌بینیِ نمره‌داری برای {s} نیست — رویدادِ مهمِ بعدی حدودِ ۲ ساعت پس از انتشار نمره می‌گیرد.",
+    sc_none_x:"هنوز رویدادِ نمره‌داری برای {s} نیست", pct_hit:"٪ درست",
+    detail_title:"جزئیاتِ رویداد", evt_reaction_title:"{t} · واکنش پیرامونِ انتشار",
+    react_low:"کف", react_high:"سقف", react_net:"خالص", react_dashed:"(خط‌چین = لحظهٔ انتشار)",
+    react_tracking:"در حال رصد — ساختِ پنجرهٔ قیمتی پیرامونِ این انتشار…",
+    react_nodata:"هنوز دادهٔ قیمتیِ کافی پیرامونِ این رویداد نیست — در حال ساخت…", release:"انتشار",
+    d_forecast:"پیش‌بینی", d_previous:"قبلی", d_impact:"اثر", d_expected:"موردانتظار",
+    inline_priced:"هم‌سطح با اجماع — عمدتاً قیمت‌گذاری‌شده", d_nofred:"تاریخچهٔ قیمتیِ FRED برای این انتشار نیست — خوانشِ زیر مبتنی بر انتظار است.",
+    d_bars:"میله‌ها = مقادیرِ واقعی (FRED {series}) · خط‌چین = میانگینِ ۶ماهه {mean}{unit} · ", d_goldbar:"میلهٔ طلایی = پیش‌بینیِ پیشِ‌رو {f}",
+    ask_ai:"از Gold Brain AI بپرس", chat_ph:"دربارهٔ طلا، سطوح، اخبار یا رویدادِ بعدی بپرس…",
+    chat_note:"پاسخ‌ها از کانتکستِ زندهٔ داشبورد استفاده می‌کنند. تعدادِ سوال محدود است. توصیهٔ مالی نیست.",
+    chat_intro:"دربارهٔ طلا، سطوحِ کلیدی، فضای اخبار یا رویدادِ بعدی از من بپرس.",
+    chat_off:"چت فعلاً در دسترس نیست.", chat_limit:"سقفِ سوال فعلاً پر شد — کمی بعد دوباره امتحان کن.",
+    chat_neterr:"خطای شبکه — دوباره امتحان کن.", chat_left:"· {n} باقی", question:"سوال", questions:"سوال",
+    chat_send:"بفرست", local:"محلی", loading:"در حال بارگذاری…",
+    tr_up:"صعودی", tr_down:"نزولی", tr_side:"خنثی",
+  },
+  de: {
+    doc_title:"Gold-Marktintelligenz", h1:"<b>Gold</b>-Marktintelligenz",
+    mute_title:"Ton stumm/an", alerts_btn:"🔔 Alarme", alerts_title:"Alarme & Töne",
+    connecting:"verbinde…", updated:"aktualisiert", news_ok:"News", cot_live:"COT live", events_lbl:"Ereignisse",
+    al_head:"🔔 Alarme & Töne", al_master:"Haupt", al_sound:"Ton", al_notif:"Desktop-Benachrichtigung",
+    al_vol:"Lautstärke", al_evtmin:"Alarm für wichtiges Ereignis (Min. vorher)", al_flip:"Alarm bei Composite-Wechsel",
+    al_level:"Gold-Preisniveau", al_levelon:"Alarm bei Niveaubruch", al_test:"▶ Ton testen",
+    al_none:"Noch keine Alarme — scharf und wachsam.", al_level_ph:"z. B. 4110",
+    comp_hdr:"{a}-Treiber (Composite)", disc_comp:"Nur Kontext — ein Maß für Makrodruck, KEIN Handelssignal.",
+    bullish_lean:"BULLISCHE Neigung", bearish_lean:"BÄRISCHE Neigung", neutral_lean:"NEUTRAL",
+    news_hdr:"News & Geopolitik", geo_risk:"Geo-Risiko", safe_haven:"Safe-Haven-Neigung",
+    econ_lock:"Wirtschafts-Sperre", next_event:"Nächstes Ereignis", risk_drivers:"Risikotreiber", headline:"Schlagzeile",
+    risk_off:"Risk-off (bullisch für Gold)", risk_on:"Risk-on", neutral:"neutral",
+    locked:"GESPERRT", clear:"frei", none_detected:"nichts erkannt",
+    cot_hdr:"CFTC-Positionierung (wöchentlich)", speculators:"Spekulanten", net:"Netto", pct_oi:"% des Open Interest",
+    weekly_change:"Wochenänderung", as_of:"Stand / Konfidenz", disc_cot:"Wochenbericht — KEINE Live-Händlerzahl.",
+    unavailable:"nicht verfügbar", bullish_x:"bullisch für {s}", bearish_x:"bärisch für {s}",
+    live_chart:"Live-Chart", candle_note:"Live-Kerzenchart · Zeitrahmen oben wählen · Kerze für OHLC überfahren.",
+    chart_unavail:"Chartdaten nicht verfügbar — ist der Feed/PC an?",
+    ai_analyst:"KI-Analyst", disc_analyst:"Automatisch aus Live-Daten — Preis, Geopolitik, Positionierung und das nächste Ereignis gegen seinen realen Vortrend. Kontext, kein Handelssignal.",
+    lean_word_bullish:"bullisch", lean_word_bearish:"bärisch", lean_word_neutral:"neutral", lean_suffix:"Neigung",
+    heatmap_hdr:"Cross-Asset-Heatmap", heatmap_sub:"— heutige Bewegungen der Gold-Treiber",
+    wl_ph:"Symbol hinzufügen: EURUSD, AAPL, Öl, Nasdaq, ETH…", wl_add:"+ Hinzufügen",
+    disc_watch:"Deine eigene Watchlist — Währungspaar, Aktie, Index oder Rohstoff eingeben. Auf diesem Gerät gespeichert.",
+    money_hdr:"Geld im Markt", money_sub:"— echte Aktivität, keine Schätzung",
+    open_interest:"Open Interest", money_committed:"eingesetztes Geld", volume_usd:"Volumen ($)", money_traded:"gehandeltes Geld",
+    reportable:"Meldepflichtige Händler", cftc_large:"CFTC-Großhändler", buysell_lean:"Kauf-/Verkaufsneigung", source:"Quelle",
+    broker_flow:"Live-Broker-Orderflow (Gold)",
+    ta_warn:"⚠️ Nur KI-Technikanalyse — KEINE Handelsberatung. Handel auf eigene Verantwortung.",
+    ta_hdr:"Technische Analyse", tf_intraday:"Intraday", tf_swing:"Swing · täglich", tf_position:"Position · wöchentlich",
+    ta_support:"Unterstützung", ta_resistance:"Widerstand", ta_range:"Spanne", ta_now:"jetzt",
+    ta_broker:"● Broker-Daten", ta_feed:"○ Markt-Feed", analyzing_chart:"analysiere Chart…",
+    vis_warn:"⚠️ Nur KI-Analyse — KEINE Handelsberatung. Lade deinen eigenen Chart hoch; Handel auf eigene Verantwortung.",
+    vis_hdr:"KI-Chartanalyse", vis_sub:"— Screenshot hochladen (technisch + fundamental)",
+    vis_tf:"Zeitrahmen", vis_auto:"Auto-Erkennung", vis_analyze:"Analysieren",
+    evt_hdr:"Bevorstehende wichtige Ereignisse → erwartete Reaktion", evt_hdr_x:"Bevorstehende wichtige Ereignisse → erwartete Reaktion ({s})",
+    evt_dial_title:"Zum Drehen der Ereignisse überfahren",
+    disc_events:"Über ⟳ fahren zum Drehen · Ereignis anklicken für Historie & erwartete Reaktion. Erwartungsbasiert, geschärft mit ECHTEN FRED-Werten.",
+    evt_none:"gerade keine bevorstehenden Ereignisse — der Kalender-Feed lädt evtl. noch.",
+    evt_loading:"lädt…", impact_high:"Hoch", impact_med:"Mittel",
+    inline_watch:"im Rahmen · auf Überraschung achten", surprise_driven:"überraschungsgetrieben", reacted_now:"REAGIERT · jetzt {v}",
+    sc_hdr:"Prognose-Bilanz", sc_hdr_x:"Prognose-Bilanz · {s} ", sc_building:"Bilanz wird aufgebaut…",
+    th_when:"Wann", th_cur:"Währ.", th_event:"Ereignis", th_fcst:"Prog. / Vorher", th_predicted:"Prognose",
+    th_net:"Netto (2h)", th_net_x:"{s} Netto (2h)", th_result:"Ergebnis", sc_none:"noch keine bewerteten Ereignisse",
+    disc_sc:"Nur Richtungsprognosen, bewertet an der realen isolierten 2-h-Reaktion des Symbols. „flat“ = Bewegung unter 0,05% (Rauschen). Jedes Ereignis wird einmal, ~2h nach Veröffentlichung, bewertet und dann fixiert — eine dauerhafte Bilanz.",
+    sc_hit:"✓ Treffer", sc_miss:"✗ Fehler", sc_flat:"– flach", pred_bear:"↓ bärisch", pred_bull:"↑ bullisch",
+    sc_dir_calls:"Richtungsprognosen:", sc_hits:"Treffer", sc_misses:"Fehler", sc_flatw:"flach",
+    sc_no_calls:"Noch keine bewerteten Prognosen für {s} — die nächste wichtige Veröffentlichung wird ~2h danach bewertet.",
+    sc_none_x:"noch keine bewerteten Ereignisse für {s}", pct_hit:"% Treffer",
+    detail_title:"Ereignis-Detail", evt_reaction_title:"{t} · Reaktion rund um die Veröffentlichung",
+    react_low:"Tief", react_high:"Hoch", react_net:"Netto", react_dashed:"(gestrichelt = Veröffentlichung)",
+    react_tracking:"verfolge — baue das Preisfenster rund um diese Veröffentlichung…",
+    react_nodata:"noch nicht genug Preisdaten rund um dieses Ereignis — wird aufgebaut…", release:"Veröffentl.",
+    d_forecast:"Prognose", d_previous:"Vorher", d_impact:"Wirkung", d_expected:"Erwartet",
+    inline_priced:"Im Rahmen des Konsenses — weitgehend eingepreist", d_nofred:"Keine FRED-Preishistorie für diese Veröffentlichung — die Einschätzung unten ist erwartungsbasiert.",
+    d_bars:"Balken = echte Werte (FRED {series}) · gestrichelt = 6-Mon-Schnitt {mean}{unit} · ", d_goldbar:"goldener Balken = kommende Prognose {f}",
+    ask_ai:"Frag Gold Brain AI", chat_ph:"Frag zu Gold, Niveaus, News oder dem nächsten Ereignis…",
+    chat_note:"Antworten nutzen den Live-Marktkontext des Dashboards. Begrenzte Fragenzahl. Keine Finanzberatung.",
+    chat_intro:"Frag mich zu Gold, wichtigen Niveaus, der Nachrichtenlage oder dem nächsten Ereignis.",
+    chat_off:"Chat ist vorübergehend nicht verfügbar.", chat_limit:"Fragenlimit vorerst erreicht — bitte später erneut versuchen.",
+    chat_neterr:"Netzwerkfehler — bitte erneut versuchen.", chat_left:"· {n} übrig", question:"Frage", questions:"Fragen",
+    chat_send:"Senden", local:"lokal", loading:"lädt…",
+    tr_up:"aufwärts", tr_down:"abwärts", tr_side:"seitwärts",
+  }
+};
+function t(key, vars){   // _lang is the single language global (declared below, set by the header selector)
+  const L = (typeof _lang!=='undefined' && I18N[_lang]) ? _lang : 'en';
+  let s = (I18N[L] && I18N[L][key]);
+  if(s==null) s = (I18N.en[key]!=null ? I18N.en[key] : key);
+  if(vars) for(const k in vars) s = s.split('{'+k+'}').join(vars[k]);
+  return s;
+}
+function applyStaticI18n(){
+  const L = (typeof _lang!=='undefined' && I18N[_lang]) ? _lang : 'en';
+  document.documentElement.lang = L;
+  document.documentElement.dir = (L==='fa') ? 'rtl' : 'ltr';
+  try{ document.title = t('doc_title'); }catch(e){}
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = t(el.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{ el.innerHTML = t(el.getAttribute('data-i18n-html')); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el=>{ el.title = t(el.getAttribute('data-i18n-title')); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ el.placeholder = t(el.getAttribute('data-i18n-ph')); });
+}
+// ===================== end i18n =====================
 
 // --- 3D events wheel: position each .evtitem by its offset from the centered index ---
 function layoutWheel(){
@@ -655,8 +880,9 @@ let _detailEvt=null;
 let _priceSeries=[];   // [[epoch_ms, price], ...] for the SELECTED symbol (reactions)
 let _symbol='XAUUSD';
 try{ _symbol=localStorage.getItem('gmi_symbol')||'XAUUSD'; }catch(e){}
-let _lang='en';   // AI answer language (chat + chart analysis): en / fa / de
+let _lang='en';   // single language global: whole dashboard UI + chat + chart analysis (en/fa/de)
 try{ _lang=localStorage.getItem('gmi_lang')||'en'; }catch(e){}
+if(!I18N[_lang]) _lang='en';
 let _tf='swing';
 try{ _tf=localStorage.getItem('gmi_tf')||'swing'; }catch(e){}
 
@@ -711,7 +937,7 @@ function drawReactionChart(e){
   const from=et-30*60000, to=Math.min(Date.now(), et+3*3600000);
   const pts=_priceSeries.filter(p=>p[0]>=from&&p[0]<=to);
   if(pts.length<2){ x.fillStyle='#9aa7b4'; x.font='13px sans-serif';
-    x.fillText('not enough price data around this event yet — building…',12,28); return; }
+    x.fillText(t('react_nodata'),12,28); return; }
   const pad={l:54,r:12,t:16,b:24};
   const pr=pts.map(p=>p[1]); let lo=Math.min(...pr),hi=Math.max(...pr); const pv=(hi-lo)*0.12||1; lo-=pv; hi+=pv;
   const t0=pts[0][0],t1=pts[pts.length-1][0];
@@ -722,7 +948,7 @@ function drawReactionChart(e){
   x.fillStyle='#9aa7b4'; x.font='10px sans-serif'; x.textAlign='right';
   [lo,(lo+hi)/2,hi].forEach(v=>x.fillText(v.toFixed(dd),pad.l-5,yp(v)+3));
   const rxp=xp(et); x.strokeStyle='#e3b341'; x.setLineDash([4,3]); x.beginPath(); x.moveTo(rxp,pad.t); x.lineTo(rxp,H-pad.b); x.stroke(); x.setLineDash([]);
-  x.textAlign='center'; x.fillStyle='#e3b341'; x.font='10px sans-serif'; x.fillText('release',rxp,pad.t+9);
+  x.textAlign='center'; x.fillStyle='#e3b341'; x.font='10px sans-serif'; x.fillText(t('release'),rxp,pad.t+9);
   const base=(pts.find(p=>p[0]>=et)||pts[0])[1], net=pts[pts.length-1][1]-base;
   x.strokeStyle=net>=0?'#3fb950':'#f85149'; x.lineWidth=2; x.beginPath();
   pts.forEach((p,i)=>{ const X=xp(p[0]),Y=yp(p[1]); i?x.lineTo(X,Y):x.moveTo(X,Y); }); x.stroke();
@@ -735,12 +961,12 @@ function showDetail(e, noScroll){
   $('evtChart').style.display='block';   // reset (the no-history branch hides it)
   // PASSED event -> show the real GOLD REACTION line around the release.
   if(e.hours_until<=0.15 && _priceSeries.length){
-    $('detailTitle').textContent=e.title+' · gold reaction around release';
+    $('detailTitle').textContent=t('evt_reaction_title',{t:e.title});
     drawReactionChart(e);
     const rx=reactionFor(e.when), dd=decFor(_symbol);
     $('detailLegend').innerHTML = rx
-      ? (_symbol+': <span class="down">low '+fmtSigned(rx.drop.toFixed(dd))+'</span> · <span class="up">high '+fmtSigned(rx.pop.toFixed(dd))+'</span> · net <span class="'+(rx.net>=0?'up':'down')+'">'+fmtSigned(rx.net.toFixed(dd))+'</span> (dashed = release)')
-      : 'tracking — building the price window around this release…';
+      ? (_symbol+': <span class="down">'+t('react_low')+' '+fmtSigned(rx.drop.toFixed(dd))+'</span> · <span class="up">'+t('react_high')+' '+fmtSigned(rx.pop.toFixed(dd))+'</span> · '+t('react_net')+' <span class="'+(rx.net>=0?'up':'down')+'">'+fmtSigned(rx.net.toFixed(dd))+'</span> '+t('react_dashed'))
+      : t('react_tracking');
     $('detailNote').textContent=e.note||'';
     if(!noScroll) $('detailCard').scrollIntoView({behavior:'smooth',block:'nearest'});
     return;
@@ -755,21 +981,21 @@ function showDetail(e, noScroll){
     const arrow=dir==='down'?'↓':dir==='up'?'↑':'•';
     const same=e.forecast&&e.previous&&(''+e.forecast===''+e.previous);
     const expTxt=e.impact_label ? e.impact_label
-               : same ? 'In-line consensus — largely priced in'
-               : 'Surprise-driven';
+               : same ? t('inline_priced')
+               : t('surprise_driven');
     $('detailLegend').innerHTML=
       '<div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:8px;font-size:13px">'+
-        '<span class="neu">Forecast <b style="color:var(--txt)">'+(e.forecast||'—')+'</b></span>'+
-        '<span class="neu">Previous <b style="color:var(--txt)">'+(e.previous||'—')+'</b></span>'+
-        '<span class="neu">Impact <b style="color:var(--txt)">'+(e.impact||'—')+'</b></span>'+
-        '<span class="neu">Expected <b class="'+dcol+'">'+arrow+' '+expTxt+'</b></span>'+
+        '<span class="neu">'+t('d_forecast')+' <b style="color:var(--txt)">'+(e.forecast||'—')+'</b></span>'+
+        '<span class="neu">'+t('d_previous')+' <b style="color:var(--txt)">'+(e.previous||'—')+'</b></span>'+
+        '<span class="neu">'+t('d_impact')+' <b style="color:var(--txt)">'+(e.impact||'—')+'</b></span>'+
+        '<span class="neu">'+t('d_expected')+' <b class="'+dcol+'">'+arrow+' '+expTxt+'</b></span>'+
       '</div>'+
-      '<div class="sub">No FRED price history for this release — the read below is expectation-based.</div>';
+      '<div class="sub">'+t('d_nofred')+'</div>';
   } else {
     $('evtChart').style.display='block';
     drawEventChart(e);
-    $('detailLegend').innerHTML='Bars = real actuals (FRED '+h.series+') · dashed = 6-mo avg '+h.mean+h.unit+
-      ' · <span style="color:var(--gold)">gold bar</span> = upcoming forecast '+(e.forecast||'—');
+    $('detailLegend').innerHTML=t('d_bars',{series:h.series,mean:h.mean,unit:h.unit})+
+      '<span style="color:var(--gold)">'+t('d_goldbar',{f:(e.forecast||'—')})+'</span>';
   }
   $('detailNote').textContent=e.note||'';
   if(!noScroll) $('detailCard').scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -820,7 +1046,7 @@ function drawCandles(candles){
   const W=c.width=c.clientWidth||1000, H=c.height;
   x.clearRect(0,0,W,H);
   if(!candles || candles.length<2){ x.fillStyle='#9aa7b4'; x.font='13px sans-serif';
-    x.fillText('chart data unavailable — is the feed/PC on?',12,28); c.__pts=[]; return; }
+    x.fillText(t('chart_unavail'),12,28); c.__pts=[]; return; }
   const pad={l:58,r:12,t:12,b:20};
   let lo=Infinity,hi=-Infinity;
   candles.forEach(k=>{ if(k[3]<lo)lo=k[3]; if(k[2]>hi)hi=k[2]; });
@@ -869,18 +1095,18 @@ async function refresh(){
     // per-symbol positioning + AI analysis (drive the gauge & COT panel)
     let pos={}, an={};
     try{ pos=await (await fetch('/positioning?symbol='+sym,{cache:'no-store'})).json(); }catch(e){}
-    try{ an=await (await fetch('/analysis?symbol='+sym,{cache:'no-store'})).json(); }catch(e){}
+    try{ an=await (await fetch('/analysis?symbol='+sym+'&lang='+_lang,{cache:'no-store'})).json(); }catch(e){}
     if(sym!==_symbol) return;   // symbol switched while fetching -> drop this stale render
 
     // composite gauge (symbol-aware; computed server-side in /analysis)
     const score=(an && typeof an.composite==='number')?an.composite:0;
     $('scoreVal').textContent=fmtSigned(score);
     $('scoreVal').className='big '+cls(score/100);
-    $('scoreLbl').textContent= score>8?'BULLISH lean':score<-8?'BEARISH lean':'NEUTRAL';
+    $('scoreLbl').textContent= score>8?t('bullish_lean'):score<-8?t('bearish_lean'):t('neutral_lean');
     $('scoreLbl').className= cls(score/100);
     drawGauge(score);
     const _isCrypto=(_symbol==='BTCUSD'||_symbol==='ETHUSD');
-    $('compHdr').textContent=(_symbol.slice(0,3)==='XAU'?'Gold':_symbol)+' Drivers (composite)';
+    $('compHdr').textContent=t('comp_hdr',{a:(_symbol.slice(0,3)==='XAU'?'Gold':_symbol)});
     $('compFormula').innerHTML=(_symbol.slice(0,3)==='XAU'
       ? 'Bias = 0.6·News + 0.4·COT'
       : _isCrypto
@@ -897,33 +1123,33 @@ async function refresh(){
     const geoB=+n.geo_bias||0;
     const gc=n.geo_categories||{};
     const gparts=Object.keys(gc).filter(k=>gc[k]>0).sort((a,b)=>gc[b]-gc[a]).map(k=>k+' '+gc[k]);
-    $('geoCats').textContent = gparts.length? gparts.join(' · ') : 'none detected';
+    $('geoCats').textContent = gparts.length? gparts.join(' · ') : t('none_detected');
     const gr=Math.round((+n.geo_risk||0)*100);
     $('geoRisk').textContent=gr+'%'; $('geoBar').style.width=gr+'%';
-    $('geoBias').innerHTML='<span class="'+cls(geoB)+'">'+(geoB>0?'risk-off (bullish gold)':geoB<0?'risk-on':'neutral')+'</span>';
-    $('econLock').innerHTML = n.econ_blocked?'<span class="pill bg-down">LOCKED</span>':'<span class="pill bg-up">clear</span>';
+    $('geoBias').innerHTML='<span class="'+cls(geoB)+'">'+(geoB>0?t('risk_off'):geoB<0?t('risk_on'):t('neutral'))+'</span>';
+    $('econLock').innerHTML = n.econ_blocked?'<span class="pill bg-down">'+t('locked')+'</span>':'<span class="pill bg-up">'+t('clear')+'</span>';
     $('nextEvt').textContent = (n.next_event||'—')+(n.next_minutes>=0?(' · '+n.next_minutes+'m'):'');
     $('headline').textContent = n.headline||'—';
 
     // COT (per selected symbol) + what it means for the pair
     if(pos && pos.ok && pos.report_date){
       const pb=+pos.pair_bias||0;
-      const implic = pb>0.05?('bullish '+_symbol):pb<-0.05?('bearish '+_symbol):'neutral';
+      const implic = pb>0.05?t('bullish_x',{s:_symbol}):pb<-0.05?t('bearish_x',{s:_symbol}):t('neutral');
       $('cotLabel').innerHTML='<span class="'+(pos.spec_net_pct_oi>0?'up':'down')+'">'+(pos.asset?pos.asset+': ':'')+(pos.label||'–')+'</span>';
       $('cotNet').textContent=(pos.noncomm_net||0).toLocaleString();
       $('cotPct').textContent=(pos.spec_net_pct_oi||0)+'%';
       $('cotWk').innerHTML='<span class="'+cls(pos.weekly_change_net/30000)+'">'+fmtSigned((pos.weekly_change_net||0).toLocaleString())+'</span>';
       $('cotMeta').innerHTML=(pos.report_date||'—')+' · '+(pos.confidence||0)+'% · <span class="'+cls(pb)+'">'+implic+'</span>';
-    } else { $('cotLabel').textContent='unavailable'; ['cotNet','cotPct','cotWk','cotMeta'].forEach(id=>$(id).textContent='—'); }
+    } else { $('cotLabel').textContent=t('unavailable'); ['cotNet','cotPct','cotWk','cotMeta'].forEach(id=>$(id).textContent='—'); }
 
     // events
-    $('evtHdr').textContent='Upcoming High-Impact Events → expected reaction ('+_symbol+')';
+    $('evtHdr').textContent=t('evt_hdr_x',{s:_symbol});
     $('evtColHdr').textContent='Expected → '+_symbol+' / Reacted';
     const wheel=$('evtWheel'); wheel.innerHTML='';
     const _dial=$('evtDial'), _wrap=document.querySelector('.evtwheel-wrap');
     const up=ev.filter(e=>e.hours_until>=-12).slice(0,16);   // keep recent PASSED events too
     if(!up.length){
-      wheel.innerHTML='<div class="neu" style="padding:22px">no upcoming events right now — the calendar feed may still be loading.</div>';
+      wheel.innerHTML='<div class="neu" style="padding:22px">'+t('evt_none')+'</div>';
       window._evtCount=0;
       if(_dial) _dial.style.display='none'; if(_wrap) _wrap.style.minHeight='0'; wheel.style.height='auto';
     }
@@ -935,10 +1161,10 @@ async function refresh(){
         const dc=dir==='down'?'down':dir==='up'?'up':'neu';
         const dot=dir==='down'?'↓ ':dir==='up'?'↑ ':'';
         const inLine=e.forecast&&e.previous&&(''+e.forecast===''+e.previous);
-        const richLbl=e.impact_label||(inLine?'in-line · watch surprise':'surprise-driven');
+        const richLbl=e.impact_label||(inLine?t('inline_watch'):t('surprise_driven'));
         let expTxt=pv.rich?richLbl:pv.label, expCls=dc;
         if(e.hours_until<=0.15){ const rx=reactionFor(e.when);
-          if(rx){ const dd=decFor(_symbol); expCls=rx.net>=0?'up':'down'; expTxt='REACTED · now '+fmtSigned(rx.net.toFixed(dd)); } }
+          if(rx){ const dd=decFor(_symbol); expCls=rx.net>=0?'up':'down'; expTxt=t('reacted_now',{v:fmtSigned(rx.net.toFixed(dd))}); } }
         const it=document.createElement('div');
         it.className='evtitem';
         it.dataset.idx=i;
@@ -951,10 +1177,10 @@ async function refresh(){
         it.innerHTML=
           '<div class="et-row"><span class="et-time'+(soon?' soon':'')+'">'+timeUntil(e.hours_until)+'</span>'+
           '<span class="et-cur">'+e.currency+'</span>'+
-          (e.impact==='High'?'<span class="pill bg-down">High</span>':'<span class="pill bg-neu">Med</span>')+
+          (e.impact==='High'?'<span class="pill bg-down">'+t('impact_high')+'</span>':'<span class="pill bg-neu">'+t('impact_med')+'</span>')+
           (e.tier1?' <span class="soon">★</span>':'')+'</div>'+
           '<div class="et-title">'+e.title+'</div>'+
-          '<div class="et-meta">F '+(e.forecast||'—')+' · Prev '+(e.previous||'—')+' · '+localT(e.when)+' local</div>'+
+          '<div class="et-meta">F '+(e.forecast||'—')+' · Prev '+(e.previous||'—')+' · '+localT(e.when)+' '+t('local')+'</div>'+
           '<div class="et-exp '+expCls+'">'+dot+expTxt+'</div>';
         wheel.appendChild(it);
       });
@@ -983,19 +1209,19 @@ async function refresh(){
       const sc=await (await fetch('/scorecard?symbol='+sym,{cache:'no-store'})).json();
       if(sym!==_symbol) return;
       const dd=decFor(sym);
-      $('scHdr').firstChild.textContent='Prediction Scorecard · '+sym+' ';
-      $('scNetHdr').textContent=sym+' net (2h)';
-      $('scHitRate').textContent = sc.hit_rate!=null? ('· '+sc.hit_rate+'% hit ('+sc.hits+'/'+sc.directional+')') : '';
+      $('scHdr').firstChild.textContent=t('sc_hdr_x',{s:sym});
+      $('scNetHdr').textContent=t('th_net_x',{s:sym});
+      $('scHitRate').textContent = sc.hit_rate!=null? ('· '+sc.hit_rate+'% ('+sc.hits+'/'+sc.directional+')') : '';
       $('scSummary').innerHTML = sc.directional
-        ? ('Directional calls: <b>'+sc.directional+'</b> · <span class="up">hits '+sc.hits+'</span> · <span class="down">misses '+sc.misses+'</span> · flat '+sc.flat)
-        : 'No graded calls for '+sym+' yet — the next high-impact release is scored ~2h after it prints.';
+        ? (t('sc_dir_calls')+' <b>'+sc.directional+'</b> · <span class="up">'+t('sc_hits')+' '+sc.hits+'</span> · <span class="down">'+t('sc_misses')+' '+sc.misses+'</span> · '+t('sc_flatw')+' '+sc.flat)
+        : t('sc_no_calls',{s:sym});
       const sb=$('scBody');
       if(sc.records && sc.records.length){
         sb.innerHTML='';
         sc.records.forEach(r=>{
           const rc=r.result==='hit'?'up':r.result==='miss'?'down':'neu';
-          const rt=r.result==='hit'?'✓ hit':r.result==='miss'?'✗ miss':'– flat';
-          const pd=r.predicted==='down'?'<span class="down">↓ bearish</span>':'<span class="up">↑ bullish</span>';
+          const rt=r.result==='hit'?t('sc_hit'):r.result==='miss'?t('sc_miss'):t('sc_flat');
+          const pd=r.predicted==='down'?'<span class="down">'+t('pred_bear')+'</span>':'<span class="up">'+t('pred_bull')+'</span>';
           const tr=document.createElement('tr');
           tr.innerHTML='<td class="sub">'+localT(r.when)+'</td><td>'+r.currency+'</td><td>'+r.title+'</td>'+
             '<td class="r sub">'+(r.forecast||'—')+' / '+(r.previous||'—')+'</td>'+
@@ -1003,33 +1229,35 @@ async function refresh(){
             '<td class="'+rc+'">'+rt+'</td>';
           sb.appendChild(tr);
         });
-      } else { sb.innerHTML='<tr><td colspan="7" class="neu">no graded events for '+sym+' yet</td></tr>'; }
+      } else { sb.innerHTML='<tr><td colspan="7" class="neu">'+t('sc_none_x',{s:sym})+'</td></tr>'; }
     }catch(e){}
 
-    // AI analyst paragraph (an fetched above)
+    // AI analyst paragraph (an fetched above; text is localized server-side by lang)
     if(an && an.text){ $('anText').textContent=an.text;
-      $('anLean').textContent='· '+an.lean+' lean ('+(an.composite>=0?'+':'')+an.composite+')'; }
+      const lw={bullish:t('lean_word_bullish'),bearish:t('lean_word_bearish'),neutral:t('lean_word_neutral')}[an.lean]||an.lean;
+      $('anLean').textContent='· '+lw+' '+t('lean_suffix')+' ('+(an.composite>=0?'+':'')+an.composite+')'; }
 
     // technical analysis (support/resistance + read, per timeframe)
     try{
-      const ta=await (await fetch('/technicals?symbol='+sym+'&tf='+_tf,{cache:'no-store'})).json();
+      const ta=await (await fetch('/technicals?symbol='+sym+'&tf='+_tf+'&lang='+_lang,{cache:'no-store'})).json();
       if(sym!==_symbol) return;
       if(ta && ta.ok){
         const tc=ta.trend==='up'?'up':ta.trend==='down'?'down':'neu';
-        $('taTrend').innerHTML='· <span class="'+tc+'">'+ta.trend+'</span>';
-        var srcTag=ta.source==='broker'?'<span class="up">● broker data</span>':'<span class="sub">○ market feed</span>';
-        $('taLevels').innerHTML='Support <b class="up">'+ta.support+'</b> &nbsp;·&nbsp; Resistance <b class="down">'+ta.resistance+'</b>'+
-          ' &nbsp;·&nbsp; <span class="sub">range '+ta.major_support+'–'+ta.major_resistance+' · now '+ta.current+'</span>'+
+        const tw={up:t('tr_up'),down:t('tr_down'),sideways:t('tr_side')}[ta.trend]||ta.trend;
+        $('taTrend').innerHTML='· <span class="'+tc+'">'+tw+'</span>';
+        var srcTag=ta.source==='broker'?'<span class="up">'+t('ta_broker')+'</span>':'<span class="sub">'+t('ta_feed')+'</span>';
+        $('taLevels').innerHTML=t('ta_support')+' <b class="up">'+ta.support+'</b> &nbsp;·&nbsp; '+t('ta_resistance')+' <b class="down">'+ta.resistance+'</b>'+
+          ' &nbsp;·&nbsp; <span class="sub">'+t('ta_range')+' '+ta.major_support+'–'+ta.major_resistance+' · '+t('ta_now')+' '+ta.current+'</span>'+
           ' &nbsp;·&nbsp; '+srcTag;
         $('taText').textContent=ta.text;
-      } else { $('taText').textContent=(ta&&ta.text)||'chart data unavailable'; $('taLevels').textContent='—'; $('taTrend').textContent=''; }
+      } else { $('taText').textContent=(ta&&ta.text)||t('chart_unavail'); $('taLevels').textContent='—'; $('taTrend').textContent=''; }
     }catch(e){}
 
     // money in the market — rendered by its own faster poll (loadMarketSize)
     loadMarketSize(sym);
 
-    const t=new Date().toLocaleTimeString();
-    $('meta').innerHTML='updated '+t+' · news '+(n.ok?'✓':'✕')+' · COT '+(p.availability||'?')+' · events '+(d.events&&d.events.ok?'✓':'✕');
+    const _now=new Date().toLocaleTimeString();
+    $('meta').innerHTML=t('updated')+' '+_now+' · '+t('news_ok')+' '+(n.ok?'✓':'✕')+' · '+t('cot_live')+' '+(p.availability||'?')+' · '+t('events_lbl')+' '+(d.events&&d.events.ok?'✓':'✕');
   }catch(e){
     $('live').classList.remove('live');
     $('meta').textContent='server unreachable — is ai_server.py running?';
@@ -1085,7 +1313,7 @@ attachHover($('evtChart')); attachHover($('spark')); attachHover($('candleChart'
 (function(){
   const box=$('chatMsgs'), inp=$('chatIn'), btn=$('chatSend'), left=$('chatLeft'), note=$('chatNote');
   if(!box||!inp||!btn) return;
-  let hist=[], busy=false, off=false;
+  let hist=[], busy=false, off=false, unavailable=false, limited=false, lastRem=null;
   function fmt(t){   // safe: escape HTML, then render **bold** and - bullets
     const esc=String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     return esc.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(^|\n)\s*[\*\-]\s+/g,'$1• ');
@@ -1098,10 +1326,10 @@ attachHover($('evtChart')); attachHover($('spark')); attachHover($('candleChart'
   }
   function setBot(d,text){ d.classList.remove('typing'); d.innerHTML=fmt(text); box.scrollTop=box.scrollHeight; }
   function setLeft(r){
+    lastRem = (typeof r==='number') ? r : lastRem;
     if(typeof r!=='number'){ left.textContent=''; return; }
-    left.textContent='· '+r+' question'+(r===1?'':'s')+' left';
-    if(r<=0){ off=true; inp.disabled=true; btn.disabled=true;
-      note.textContent='Question limit reached for now — please try again a bit later.'; }
+    left.textContent=t('chat_left',{n:r});
+    if(r<=0){ limited=true; off=true; inp.disabled=true; btn.disabled=true; note.textContent=t('chat_limit'); }
   }
   function lock(b){ busy=b; inp.disabled=b||off; btn.disabled=b||off; }
   async function send(){
@@ -1114,21 +1342,26 @@ attachHover($('evtChart')); attachHover($('spark')); attachHover($('candleChart'
       setBot(typing, r.text||'…');
       if(r.ok){ hist.push({role:'model',text:r.text}); }
       if(typeof r.remaining==='number') setLeft(r.remaining);
-      if(r.limited){ off=true; inp.disabled=true; btn.disabled=true;
-        note.textContent='Question limit reached for now — please try again a bit later.'; }
-    }catch(e){ setBot(typing,'Network error — try again.'); }
+      if(r.limited){ limited=true; off=true; inp.disabled=true; btn.disabled=true; note.textContent=t('chat_limit'); }
+    }catch(e){ setBot(typing,t('chat_neterr')); }
     lock(false); inp.focus();
   }
   btn.addEventListener('click',send);
   inp.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); send(); } });
+  // re-render language-dependent chat text when the dashboard language changes
+  window._refreshChatUI=function(){
+    if(unavailable) note.textContent=t('chat_off');
+    else if(limited) note.textContent=t('chat_limit');
+    box.querySelectorAll('.cmsg.sys').forEach(el=>{ el.textContent = unavailable? t('chat_off') : t('chat_intro'); });
+    if(typeof lastRem==='number') left.textContent=t('chat_left',{n:lastRem});
+  };
   (async function(){
     try{
       const s=await (await fetch('/chat/status',{cache:'no-store'})).json();
-      if(!s.available){ off=true; inp.disabled=true; btn.disabled=true;
-        note.textContent='Chat is temporarily unavailable.';
-        add('sys','Chat is temporarily unavailable.'); return; }
+      if(!s.available){ unavailable=true; off=true; inp.disabled=true; btn.disabled=true;
+        note.textContent=t('chat_off'); add('sys',t('chat_off')); return; }
       setLeft(s.remaining);
-      add('sys','Ask me about gold, key levels, the news backdrop or the next event.');
+      add('sys',t('chat_intro'));
     }catch(e){}
   })();
 })();
@@ -1190,12 +1423,20 @@ makeDD($('visTf'), true);
   s.addEventListener('change',function(){ try{localStorage.setItem('gmi_ctf',s.value);}catch(_){} loadCandles(); });
 })();
 makeDD($('candleTf'), true);
-// AI answer-language selector (chat + chart analysis) — native, not translation
-(function(){ var s=$('chatLang'); if(!s) return;
-  s.value=_lang;
-  s.addEventListener('change',function(){ _lang=s.value; try{localStorage.setItem('gmi_lang',_lang);}catch(_){} });
+// Whole-dashboard language selector (UI + chat + chart analysis) — AI-native, not translation
+(function(){ var s=$('langSel'); if(!s) return;
+  s.style.display=''; s.value=_lang;
+  s.addEventListener('change',function(){
+    _lang=s.value; try{localStorage.setItem('gmi_lang',_lang);}catch(_){}
+    applyStaticI18n();
+    try{ refresh(); }catch(_){}
+    try{ loadCandles(); }catch(_){}
+    try{ loadMarketSize(_symbol); }catch(_){}
+    try{ if(window._refreshChatUI) window._refreshChatUI(); }catch(_){}
+    try{ if(_detailEvt) showDetail(_detailEvt, true); }catch(_){}
+  });
 })();
-makeDD($('chatLang'), true);
+makeDD($('langSel'), true);
 $('tfSel').value=_tf;
 $('tfSel').addEventListener('change',e=>{
   _tf=e.target.value; try{ localStorage.setItem('gmi_tf',_tf); }catch(_){}
@@ -1335,6 +1576,7 @@ async function wlAdd(){
   if(i) i.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); wlAdd(); } });
 })();
 
+applyStaticI18n();   // paint all static labels in the saved language before first data render
 loadSeries(); setInterval(loadSeries, 60000);
 loadCandles(); setInterval(loadCandles, 30000);
 loadHeatmap(); setInterval(loadHeatmap, 60000);
