@@ -26,21 +26,34 @@ _FLOW_FILE = os.path.join(os.path.dirname(QF.MT5_QUOTE), "GoldBrainAI_Flow.txt")
 
 
 def _broker_flow():
-    """Live broker buy/sell aggression that the EA publishes (XAUUSD only)."""
+    """Live broker buy/sell aggression (XAUUSD). LOCAL: the EA's flow file.
+    CLOUD: whatever the local PC pushed via push_quote.py (quotes_feed.pushed_flow)."""
+    # 1) local MT5 flow file (when running on the trading PC)
     try:
-        if not os.path.exists(_FLOW_FILE) or time.time() - os.path.getmtime(_FLOW_FILE) > 120:
-            return None
-        with open(_FLOW_FILE, "r", encoding="ascii", errors="ignore") as fh:
-            p = fh.read().strip().split(",")
-        if len(p) < 7:
-            return None
-        buy, sell = float(p[0]), float(p[1])
-        return {"buy": buy, "sell": sell, "net": round(buy - sell, 1),
-                "dom_active": p[2] == "1", "dom_imb": float(p[3]),
-                "spread_pts": float(p[4]), "thin": p[5] == "1", "vacuum": p[6] == "1",
-                "near_zone": p[7] if len(p) > 7 else ""}
+        if os.path.exists(_FLOW_FILE) and time.time() - os.path.getmtime(_FLOW_FILE) <= 120:
+            with open(_FLOW_FILE, "r", encoding="ascii", errors="ignore") as fh:
+                p = fh.read().strip().split(",")
+            if len(p) >= 7:
+                buy, sell = float(p[0]), float(p[1])
+                return {"buy": buy, "sell": sell, "net": round(buy - sell, 1),
+                        "dom_active": p[2] == "1", "dom_imb": float(p[3]),
+                        "spread_pts": float(p[4]), "thin": p[5] == "1", "vacuum": p[6] == "1",
+                        "near_zone": p[7] if len(p) > 7 else ""}
     except Exception:
-        return None
+        pass
+    # 2) cloud: pushed from the local PC
+    try:
+        import quotes_feed as _QF
+        fl = _QF.FEED.pushed_flow()
+        if fl and "buy" in fl:
+            buy, sell = float(fl["buy"]), float(fl["sell"])
+            return {"buy": buy, "sell": sell, "net": round(buy - sell, 1),
+                    "dom_active": bool(fl.get("dom_active")), "dom_imb": float(fl.get("dom_imb", 0)),
+                    "spread_pts": float(fl.get("spread_pts", 0)), "thin": bool(fl.get("thin")),
+                    "vacuum": bool(fl.get("vacuum")), "near_zone": fl.get("near_zone", "")}
+    except Exception:
+        pass
+    return None
 
 _UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 _CHART = "https://query1.finance.yahoo.com/v8/finance/chart/%s?range=5d&interval=1d"

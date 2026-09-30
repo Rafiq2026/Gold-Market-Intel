@@ -119,9 +119,23 @@ class QuotesFeed:
                                 "chg": round(chg, 3), "pct": round(chg / prev * 100.0, 2) if prev else 0.0,
                                 "source": "MT5 broker (live)", "dec": 2, "label": "Gold"}
                 self._pushed_ts = time.time()
+                # optional live broker order-flow (buy/sell aggression) pushed alongside
+                fl = d.get("flow")
+                if isinstance(fl, dict) and ("buy" in fl):
+                    self._pushed_flow = fl
+                    self._pushed_flow_ts = time.time()
             return True
         except Exception:
             return False
+
+    def pushed_flow(self):
+        """Last broker order-flow pushed from the local PC (fresh < 120s), else None."""
+        try:
+            if time.time() - getattr(self, "_pushed_flow_ts", 0) < 120:
+                return getattr(self, "_pushed_flow", None)
+        except Exception:
+            pass
+        return None
 
     # ---- series persistence (gold sampler) ----
     def _load_series(self):

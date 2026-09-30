@@ -286,6 +286,12 @@
   .dd-item.sel{background:rgba(65,230,255,.16);color:var(--cyan);font-weight:700}
   .dd-item.sel::before{content:"▸";color:var(--cyan);margin-right:-2px}
   @media(max-width:640px){ .dd{margin-left:0} .dd-btn{min-width:150px} }
+  /* compact variant for in-card selectors (timeframe etc.) */
+  .dd.compact{margin-left:6px;display:inline-block;vertical-align:middle}
+  .dd.compact .dd-btn{min-width:0;padding:5px 10px;font-size:12px;gap:6px;font-family:inherit;letter-spacing:.3px}
+  .dd.compact .dd-dot{display:none}
+  .dd.compact .dd-list{min-width:130px}
+  .dd-lbl{font-weight:600}
   @media(max-width:640px){ .evtwheel-wrap{gap:10px} .evtdial{width:46px;height:46px;font-size:20px} }
 </style>
 </head>
@@ -985,6 +991,32 @@ $('symSel').addEventListener('change',e=>{
   btn.addEventListener('click',function(e){ e.stopPropagation(); dd.classList.toggle('open'); });
   document.addEventListener('click',function(){ dd.classList.remove('open'); });
 })();
+// Generic: turn ANY <select> into a glass dropdown (used for the small in-card ones)
+function makeDD(sel, compact){
+  if(!sel || sel._dd) return; sel._dd=true; sel.style.display='none';
+  const dd=document.createElement('div'); dd.className='dd'+(compact?' compact':'');
+  const btn=document.createElement('button'); btn.className='dd-btn'; btn.type='button';
+  const lbl=document.createElement('span'); lbl.className='dd-lbl';
+  const car=document.createElement('span'); car.className='dd-caret'; car.textContent='▾';
+  btn.appendChild(lbl); btn.appendChild(car);
+  const list=document.createElement('div'); list.className='dd-list';
+  function sync(){ const o=sel.options[sel.selectedIndex]; lbl.textContent=o?o.textContent:'';
+    Array.prototype.forEach.call(list.children,function(x){ x.classList.toggle('sel', x.dataset.val===sel.value); }); }
+  Array.prototype.forEach.call(sel.options,function(o){
+    const it=document.createElement('div'); it.className='dd-item'; it.textContent=o.textContent; it.dataset.val=o.value;
+    it.addEventListener('click',function(){ sel.value=o.value; dd.classList.remove('open'); sync(); sel.dispatchEvent(new Event('change')); });
+    list.appendChild(it);
+  });
+  dd.appendChild(btn); dd.appendChild(list);
+  sel.parentNode.insertBefore(dd, sel.nextSibling);
+  btn.addEventListener('click',function(e){ e.stopPropagation();
+    document.querySelectorAll('.dd.open').forEach(function(x){ if(x!==dd) x.classList.remove('open'); });
+    dd.classList.toggle('open'); });
+  document.addEventListener('click',function(){ dd.classList.remove('open'); });
+  sel._ddSync=sync; sync();
+}
+makeDD($('tfSel'), true);
+makeDD($('visTf'), true);
 $('tfSel').value=_tf;
 $('tfSel').addEventListener('change',e=>{
   _tf=e.target.value; try{ localStorage.setItem('gmi_tf',_tf); }catch(_){}

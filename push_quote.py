@@ -24,33 +24,53 @@ import urllib.request
 
 MT5_QUOTE = os.environ.get("GBAI_MT5_QUOTE",
     r"C:\Users\ziaal\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\GoldBrainAI_Quote.txt")
+MT5_FLOW = os.environ.get("GBAI_MT5_FLOW",
+    r"C:\Users\ziaal\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\GoldBrainAI_Flow.txt")
 CLOUD_URL = (sys.argv[1] if len(sys.argv) > 1 else os.environ.get("GBAI_CLOUD_URL", "")).rstrip("/")
 TOKEN = sys.argv[2] if len(sys.argv) > 2 else os.environ.get("GBAI_INGEST_TOKEN", "")
 INTERVAL = 5
 
 
+def read_flow():
+    """Optional: the EA's live buy/sell order-flow, so the cloud shows the bar too."""
+    try:
+        if time.time() - os.path.getmtime(MT5_FLOW) > 120:
+            return None
+        with open(MT5_FLOW, "r", encoding="ascii", errors="ignore") as fh:
+            p = fh.read().strip().split(",")
+        if len(p) < 7:
+            return None
+        return {"buy": float(p[0]), "sell": float(p[1]), "dom_active": p[2] == "1",
+                "dom_imb": float(p[3]), "spread_pts": float(p[4]),
+                "thin": p[5] == "1", "vacuum": p[6] == "1",
+                "near_zone": p[7] if len(p) > 7 else ""}
+    except Exception:
+        return None
+
+
 def read_quote():
     with open(MT5_QUOTE, "r", encoding="ascii", errors="ignore") as fh:
         p = fh.read().strip().split(",")
-    return {"symbol": "XAUUSD", "bid": float(p[0]), "ask": float(p[1]),
-            "prevClose": float(p[3]) if len(p) > 3 else float(p[0]), "token": TOKEN}
+    q = {"symbol": "XAUUSD", "bid": float(p[0]), "ask": float(p[1]),
+         "prevClose": float(p[3]) if len(p) > 3 else float(p[0]), "token": TOKEN}
+    fl = read_flow()
+    if fl:
+        q["flow"] = fl
+    return q
 
 
 def main():
     if not CLOUD_URL:
         print("Set GBAI_CLOUD_URL (your Render URL) or pass it as arg 1."); return
     print("[push] MT5 %s -> %s  every %ss" % (MT5_QUOTE, CLOUD_URL, INTERVAL))
-    last = None
     while True:
         try:
-            q = read_quote()
-            if q["bid"] != last:
-                body = json.dumps(q).encode("utf-8")
-                req = urllib.request.Request(CLOUD_URL + "/ingest/quote", data=body,
-                                             headers={"Content-Type": "application/json"})
-                r = urllib.request.urlopen(req, timeout=8).read()
-                last = q["bid"]
-                print("[push] %.2f -> %s" % (q["bid"], r.decode()[:40]))
+            q = read_quote()               # push every cycle so price AND flow stay fresh
+            body = json.dumps(q).encode("utf-8")
+            req = urllib.request.Request(CLOUD_URL + "/ingest/quote", data=body,
+                                         headers={"Content-Type": "application/json"})
+            r = urllib.request.urlopen(req, timeout=8).read()
+            print("[push] %.2f%s -> %s" % (q["bid"], (" +flow" if "flow" in q else ""), r.decode()[:30]))
         except Exception as e:
             print("[push] err:", repr(e)[:80])
         time.sleep(INTERVAL)
