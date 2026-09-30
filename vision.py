@@ -116,7 +116,10 @@ def available():
     return bool(KEY)
 
 
-def analyze(image_b64, mime, symbol, context, tf=""):
+_LANGS = {"en": "English", "fa": "Persian (Farsi)", "de": "German"}
+
+
+def analyze(image_b64, mime, symbol, context, tf="", lang="en"):
     # 'error' carries an internal code for logs/admin only; 'text' is what the
     # user sees and never names the provider or model.
     if not KEY:
@@ -124,6 +127,13 @@ def analyze(image_b64, mime, symbol, context, tf=""):
     tfU = (tf or "").upper().strip()
     prompt = _PROMPT.format(symbol=symbol, context=(context or "(none)")[:2500],
                             tf_line=_tf_line(tfU))
+    lang_name = _LANGS.get((lang or "en").lower(), "English")
+    if lang_name != "English":
+        prompt += ("\n\nIMPORTANT: Write the ENTIRE analysis — headings and all — in %s. "
+                   "Compose it natively and fluently in %s (do NOT translate; no mixed "
+                   "language). Keep the '##' heading markers and '- ' bullet markers, and "
+                   "keep the final one-line disclaimer, but write them in %s."
+                   % (lang_name, lang_name, lang_name))
     body = {
         "contents": [{"parts": [
             {"text": prompt},

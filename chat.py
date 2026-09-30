@@ -31,9 +31,12 @@ MODEL = os.environ.get("GBAI_GEMINI_MODEL", "gemini-2.5-flash")
 _FALLBACKS = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite"]
 _URL = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s"
 
-PER_CLIENT_MAX = int(os.environ.get("GBAI_CHAT_CLIENT_MAX", "15"))
-WINDOW_SEC = int(os.environ.get("GBAI_CHAT_WINDOW", "3600"))
-GLOBAL_DAY_MAX = int(os.environ.get("GBAI_CHAT_DAY_MAX", "400"))
+PER_CLIENT_MAX = int(os.environ.get("GBAI_CHAT_CLIENT_MAX", "20"))    # per client, per DAY
+WINDOW_SEC = int(os.environ.get("GBAI_CHAT_WINDOW", "86400"))         # 24h rolling reset
+GLOBAL_DAY_MAX = int(os.environ.get("GBAI_CHAT_DAY_MAX", "250"))      # whole-site quota guard/day
+
+# Chat answer language (AI-native, NOT machine translation).
+_LANGS = {"en": "English", "fa": "Persian (Farsi)", "de": "German"}
 
 _lock = threading.Lock()
 _hits = {}          # client_id -> [timestamps of successful answers]
@@ -51,7 +54,7 @@ _SYS = (
     "Give a clear view rather than hedging endlessly, but never promise a guaranteed "
     "outcome. Do NOT mention any AI model, provider or that you are an AI. If asked "
     "directly for financial advice, answer with analysis and end with a short "
-    "'Not financial advice.' note. Reply in the same language the user writes in."
+    "'Not financial advice.' note."
 )
 
 
@@ -89,7 +92,7 @@ def _consume(client_id):
         _day[0] += 1
 
 
-def reply(message, history, context, client_id="anon") -> dict:
+def reply(message, history, context, client_id="anon", lang="en") -> dict:
     """Answer one question. history = [{"role":"user"|"model","text":...}, ...]."""
     if not KEY:
         return {"ok": False, "text": _OFF, "remaining": 0}
@@ -98,6 +101,12 @@ def reply(message, history, context, client_id="anon") -> dict:
         return {"ok": False, "text": "Ask a question to begin.", "remaining": remaining(client_id)}
     if not _has_room(client_id):
         return {"ok": False, "limited": True, "text": _LIMIT, "remaining": 0}
+
+    lang_name = _LANGS.get((lang or "en").lower(), "English")
+    sys_text = _SYS + (" IMPORTANT: Write your ENTIRE reply in %s, regardless of the language "
+                       "the user wrote in. Compose it natively and fluently in %s — do NOT "
+                       "translate; use no other language and no mixed or awkward phrasing."
+                       % (lang_name, lang_name))
 
     contents = []
     for h in (history or [])[-6:]:
@@ -111,7 +120,7 @@ def reply(message, history, context, client_id="anon") -> dict:
     contents.append({"role": "user", "parts": [{"text": user_text}]})
 
     body = {
-        "systemInstruction": {"parts": [{"text": _SYS}]},
+        "systemInstruction": {"parts": [{"text": sys_text}]},
         "contents": contents,
         "generationConfig": {"temperature": 0.3, "maxOutputTokens": 600,
                              "thinkingConfig": {"thinkingBudget": 0}},

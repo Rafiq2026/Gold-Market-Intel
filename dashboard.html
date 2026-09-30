@@ -533,7 +533,14 @@
 
     <!-- Ask Gold Brain AI (live market chat) -->
     <div class="card full">
-      <h2>Ask Gold Brain AI <span id="chatLeft" class="sub"></span></h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <h2 style="margin:0">Ask Gold Brain AI <span id="chatLeft" class="sub"></span></h2>
+        <select id="chatLang" aria-label="Answer language">
+          <option value="en">English</option>
+          <option value="fa">فارسی</option>
+          <option value="de">Deutsch</option>
+        </select>
+      </div>
       <div id="chatBox">
         <div id="chatMsgs"></div>
         <div id="chatRow">
@@ -648,6 +655,8 @@ let _detailEvt=null;
 let _priceSeries=[];   // [[epoch_ms, price], ...] for the SELECTED symbol (reactions)
 let _symbol='XAUUSD';
 try{ _symbol=localStorage.getItem('gmi_symbol')||'XAUUSD'; }catch(e){}
+let _lang='en';   // AI answer language (chat + chart analysis): en / fa / de
+try{ _lang=localStorage.getItem('gmi_lang')||'en'; }catch(e){}
 let _tf='swing';
 try{ _tf=localStorage.getItem('gmi_tf')||'swing'; }catch(e){}
 
@@ -1101,7 +1110,7 @@ attachHover($('evtChart')); attachHover($('spark')); attachHover($('candleChart'
     const typing=add('bot','…'); typing.classList.add('typing');
     try{
       const r=await (await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({message:msg,history:hist.slice(0,-1),symbol:_symbol})})).json();
+        body:JSON.stringify({message:msg,history:hist.slice(0,-1),symbol:_symbol,lang:_lang})})).json();
       setBot(typing, r.text||'…');
       if(r.ok){ hist.push({role:'model',text:r.text}); }
       if(typeof r.remaining==='number') setLeft(r.remaining);
@@ -1181,6 +1190,12 @@ makeDD($('visTf'), true);
   s.addEventListener('change',function(){ try{localStorage.setItem('gmi_ctf',s.value);}catch(_){} loadCandles(); });
 })();
 makeDD($('candleTf'), true);
+// AI answer-language selector (chat + chart analysis) — native, not translation
+(function(){ var s=$('chatLang'); if(!s) return;
+  s.value=_lang;
+  s.addEventListener('change',function(){ _lang=s.value; try{localStorage.setItem('gmi_lang',_lang);}catch(_){} });
+})();
+makeDD($('chatLang'), true);
 $('tfSel').value=_tf;
 $('tfSel').addEventListener('change',e=>{
   _tf=e.target.value; try{ localStorage.setItem('gmi_tf',_tf); }catch(_){}
@@ -1235,7 +1250,7 @@ function mdLite(src){
       var b64=i>=0?s.slice(i+1):s;
       var tf=($('visTf')&&$('visTf').value)||'';
       fetch('/vision',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({image:b64, mime:f.type||'image/png', symbol:_symbol, tf:tf})})
+        body:JSON.stringify({image:b64, mime:f.type||'image/png', symbol:_symbol, tf:tf, lang:_lang})})
         .then(function(x){return x.json();})
         .then(function(d){ btn.disabled=false; st.textContent=d.ok?'✓ analyzed':'';
           out.innerHTML=mdLite((d&&d.text)||'no analysis returned'); })

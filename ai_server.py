@@ -316,7 +316,7 @@ class Handler(BaseHTTPRequestHandler):
                 d = {}
             sym = (d.get("symbol") or "XAUUSD").upper()
             self._send(200, VIS.analyze(d.get("image", ""), d.get("mime", "image/png"),
-                                        sym, _vision_context(sym), d.get("tf", "")))
+                                        sym, _vision_context(sym), d.get("tf", ""), d.get("lang", "en")))
             return
         if self.path.startswith("/chat"):
             try:
@@ -327,7 +327,7 @@ class Handler(BaseHTTPRequestHandler):
             sym = (d.get("symbol") or "XAUUSD").upper()
             cid = self._cookies().get(_COOKIE) or self.client_address[0]
             self._send(200, CH.reply(d.get("message", ""), d.get("history", []),
-                                     _vision_context(sym), cid))
+                                     _vision_context(sym), cid, d.get("lang", "en")))
             return
         self._send(404, {"ok": False, "error": "not found"})
 

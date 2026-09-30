@@ -275,7 +275,7 @@ class Handler(BaseHTTPRequestHandler):
                 d = {}
             sym = (d.get("symbol") or "XAUUSD").upper()
             self._send(200, VIS.analyze(d.get("image", ""), d.get("mime", "image/png"),
-                                        sym, _vision_context(sym), d.get("tf", "")))
+                                        sym, _vision_context(sym), d.get("tf", ""), d.get("lang", "en")))
             return
         if self.path.startswith("/chat"):
             if not self._is_authed():
@@ -288,7 +288,7 @@ class Handler(BaseHTTPRequestHandler):
             sym = (d.get("symbol") or "XAUUSD").upper()
             cid = self._cookies().get(_COOKIE) or self.client_address[0]
             self._send(200, CH.reply(d.get("message", ""), d.get("history", []),
-                                     _vision_context(sym), cid))
+                                     _vision_context(sym), cid, d.get("lang", "en")))
             return
         # Live broker-quote ingest from the local MT5 pusher (push_quote.py), so
         # the cloud gold price matches MetaTrader exactly while the PC is on.
