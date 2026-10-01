@@ -1100,6 +1100,7 @@ async function loadCandles(){
 
 async function refresh(){
   const sym=_symbol;   // lock the symbol for this render; abandon if it changes mid-flight
+  const reqLang=_lang; // lock the language too, so a stale (old-language) response can't overwrite
   try{
     const r=await fetch('/market/summary',{cache:'no-store'});
     const d=await r.json();
@@ -1110,7 +1111,7 @@ async function refresh(){
     // per-symbol positioning + AI analysis (drive the gauge & COT panel)
     let pos={}, an={};
     try{ pos=await (await fetch('/positioning?symbol='+sym,{cache:'no-store'})).json(); }catch(e){}
-    try{ an=await (await fetch('/analysis?symbol='+sym+'&lang='+_lang,{cache:'no-store'})).json(); }catch(e){}
+    try{ an=await (await fetch('/analysis?symbol='+sym+'&lang='+reqLang,{cache:'no-store'})).json(); }catch(e){}
     if(sym!==_symbol) return;   // symbol switched while fetching -> drop this stale render
 
     // composite gauge (symbol-aware; computed server-side in /analysis)
@@ -1248,14 +1249,14 @@ async function refresh(){
     }catch(e){}
 
     // AI analyst paragraph (an fetched above; text is localized server-side by lang)
-    if(an && an.text){ $('anText').textContent=an.text;
+    if(an && an.text && _lang===reqLang){ $('anText').textContent=an.text;
       const lw={bullish:t('lean_word_bullish'),bearish:t('lean_word_bearish'),neutral:t('lean_word_neutral')}[an.lean]||an.lean;
       $('anLean').textContent='· '+lw+' '+t('lean_suffix')+' ('+(an.composite>=0?'+':'')+an.composite+')'; }
 
     // technical analysis (support/resistance + read, per timeframe)
     try{
-      const ta=await (await fetch('/technicals?symbol='+sym+'&tf='+_tf+'&lang='+_lang,{cache:'no-store'})).json();
-      if(sym!==_symbol) return;
+      const ta=await (await fetch('/technicals?symbol='+sym+'&tf='+_tf+'&lang='+reqLang,{cache:'no-store'})).json();
+      if(sym!==_symbol || _lang!==reqLang) return;
       if(ta && ta.ok){
         const tc=ta.trend==='up'?'up':ta.trend==='down'?'down':'neu';
         const tw={up:t('tr_up'),down:t('tr_down'),sideways:t('tr_side')}[ta.trend]||ta.trend;

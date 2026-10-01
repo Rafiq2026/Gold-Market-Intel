@@ -28,7 +28,9 @@ import urllib.error
 
 KEY = os.environ.get("GBAI_GEMINI_KEY") or os.environ.get("GBAI_VISION_KEY") or ""
 MODEL = os.environ.get("GBAI_GEMINI_MODEL", "gemini-2.5-flash")
-_FALLBACKS = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite"]
+# Each model has its OWN free-tier daily quota, so rotating across a few makes the
+# feature resilient when one is exhausted (429) or momentarily overloaded (503).
+_FALLBACKS = ["gemini-2.5-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"]
 _URL = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s"
 
 PER_CLIENT_MAX = int(os.environ.get("GBAI_CHAT_CLIENT_MAX", "20"))    # per client, per DAY
@@ -145,7 +147,9 @@ def reply(message, history, context, client_id="anon", lang="en") -> dict:
                     last = json.loads(exc.read().decode("utf-8", "ignore")).get("error", {}).get("message", "")
                 except Exception:
                     last = "HTTP %s" % code
-                if code in (503, 429, 500):
+                if code in (429, 404):
+                    break                 # quota exhausted / model gone -> try the next model now
+                if code in (503, 500):
                     time.sleep(1.2 * (attempt + 1))
                     continue
                 break

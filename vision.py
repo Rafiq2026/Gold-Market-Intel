@@ -27,7 +27,7 @@ MODEL = os.environ.get("GBAI_GEMINI_MODEL", "gemini-2.5-flash")
 # Try the configured model first, then stable fallbacks. The free tier throws
 # 503 "high demand" on any single model at random, so we rotate + retry hard so
 # the end user almost never sees a failure.
-_FALLBACKS = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite"]
+_FALLBACKS = ["gemini-2.5-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"]
 _URL = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s"
 
 # User-facing fallback message: generic, no provider name, no jargon.
@@ -168,10 +168,12 @@ def analyze(image_b64, mime, symbol, context, tf="", lang="en"):
                     last = json.loads(exc.read().decode("utf-8", "ignore")).get("error", {}).get("message", "")
                 except Exception:
                     last = "HTTP %s" % code
-                if code in (503, 429, 500):   # overloaded / rate-limited -> back off, try next
+                if code in (429, 404):        # quota exhausted / model retired -> next model now
+                    break
+                if code in (503, 500):        # overloaded -> back off, retry same model
                     time.sleep(1.2 * (attempt + 1))
                     continue
-                break                          # 400/404 etc.: don't retry this model
+                break                          # 400 etc.: don't retry this model
             except Exception as exc:
                 last = str(exc)
                 time.sleep(1.0)

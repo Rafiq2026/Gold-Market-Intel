@@ -22,7 +22,7 @@ import urllib.error
 import chat as _CH   # reuse the same key/model/endpoint as the chat feature
 
 _LANGS = {"fa": "Persian (Farsi)", "de": "German"}
-TTL = 180                      # seconds a cached translation is reused (bounds quota)
+TTL = 600                      # seconds a cached translation is reused (bounds quota)
 _lock = threading.Lock()
 _cache = {}                    # (cache_key, lang) -> (ts, translated_text)
 
@@ -40,14 +40,22 @@ def available() -> bool:
     return bool(_CH.KEY)
 
 
+# Translation is an easy task -> use the cheap, high-free-quota LITE models first so it
+# never eats the flash quota the chat/vision features need. Separate per-model quotas +
+# fallback make it resilient to 429.
+_TMODELS = ["gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-3.5-flash", "gemini-flash-latest"]
+
+
 def _call(text, lang_name):
     body = {
         "contents": [{"role": "user", "parts": [{"text": _PROMPT.format(lang=lang_name, text=text)}]}],
-        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 900,
+        # High output cap so a long paragraph is never cut off mid-sentence (FA/DE
+        # expand vs English); lite model first for low latency on this simple task.
+        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 2048,
                              "thinkingConfig": {"thinkingBudget": 0}},
     }
     payload = json.dumps(body).encode("utf-8")
-    models = [_CH.MODEL] + [m for m in _CH._FALLBACKS if m != _CH.MODEL]
+    models = _TMODELS
     for m in models:
         for attempt in range(2):
             try:
@@ -57,7 +65,9 @@ def _call(text, lang_name):
                 d = json.loads(r.decode("utf-8", "ignore"))
                 return d["candidates"][0]["content"]["parts"][0]["text"].strip()
             except urllib.error.HTTPError as exc:
-                if exc.code in (503, 429, 500):
+                if exc.code in (429, 404):
+                    break                      # quota gone / model retired -> next model now
+                if exc.code in (503, 500):
                     time.sleep(1.0 * (attempt + 1)); continue
                 break
             except Exception:
