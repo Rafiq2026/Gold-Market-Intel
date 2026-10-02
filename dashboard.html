@@ -92,6 +92,21 @@
   .geoitem .gi-dot{flex:0 0 auto;font-weight:700;font-size:11px}
   .geoitem .gi-txt{color:var(--txt);word-break:break-word}
   .geoitem .gi-cat{color:var(--dim);font-size:10px;white-space:nowrap}
+  /* --- News archive ("back room") overlay --- */
+  #geoArchive{position:fixed;top:6vh;left:50%;transform:translateX(-50%);z-index:300;width:min(680px,94vw);
+    max-height:84vh;display:none;flex-direction:column;background:linear-gradient(158deg,rgba(20,32,50,.99),rgba(9,14,24,.99));
+    border:1.5px solid var(--cyan2);border-radius:14px;padding:14px;backdrop-filter:blur(16px);
+    box-shadow:0 30px 70px -20px rgba(0,0,0,.92),0 0 30px rgba(65,230,255,.18)}
+  #geoArchive.open{display:flex}
+  #geoArchive .ga-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  #geoArchive h3{margin:0;color:var(--cyan)}
+  #geoArchSearch{width:100%;box-sizing:border-box;background:var(--panel2);border:1px solid var(--line);
+    border-radius:9px;padding:9px 12px;color:var(--txt);font-size:13px;outline:none;margin-bottom:10px}
+  #geoArchSearch:focus{border-color:var(--cyan)}
+  #geoArchList{overflow-y:auto;display:flex;flex-direction:column;gap:5px}
+  .ga-row{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.45;padding:6px 9px;
+    border-radius:7px;background:var(--panel2);border:1px solid var(--line)}
+  .ga-row .ga-t{color:var(--dim);font-size:10px;white-space:nowrap;flex:0 0 auto}
   /* --- AI Analysis tabs (Technical / Fundamental) --- */
   .antabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:12px}
   .antab{background:none;border:none;border-bottom:2px solid transparent;color:var(--dim);
@@ -395,6 +410,16 @@
   <div class="afeed" id="alFeed"><div class="neu" data-i18n="al_none">No alerts yet — armed and watching.</div></div>
 </div>
 
+<!-- News archive ("back room") overlay -->
+<div id="geoArchive">
+  <div class="ga-head">
+    <h3 data-i18n="geo_archive">News archive</h3>
+    <button id="geoArchClose" class="abtn" style="padding:2px 10px">✕</button>
+  </div>
+  <input id="geoArchSearch" type="text" data-i18n-ph="geo_search" placeholder="search headlines…" autocomplete="off">
+  <div id="geoArchList"></div>
+</div>
+
 <div class="wrap">
   <div class="grid">
     <!-- Composite drivers -->
@@ -425,7 +450,10 @@
       <div id="geoCats" style="color:var(--dim);font-size:12px">—</div>
       <div class="row" style="border:0;margin-top:6px"><span data-i18n="headline">Headline</span></div>
       <div id="headline" style="color:var(--dim);font-size:12px">—</div>
-      <div class="row" style="border:0;margin-top:8px"><span data-i18n="live_geo">Live market-moving headlines</span></div>
+      <div class="row" style="border:0;margin-top:8px">
+        <span data-i18n="live_geo">Live market-moving headlines</span>
+        <button id="geoArchBtn" class="abtn" data-i18n-title="geo_archive" title="News archive (back room)" style="padding:2px 9px;font-size:12px">📜</button>
+      </div>
       <div id="geoFeed" class="geofeed"><div class="neu" data-i18n="loading">loading…</div></div>
     </div>
 
@@ -599,7 +627,7 @@ const I18N = {
     comp_hdr:"{a} Drivers (composite)", disc_comp:"Context only — a read of macro pressure, NOT a trade signal.",
     bullish_lean:"BULLISH lean", bearish_lean:"BEARISH lean", neutral_lean:"NEUTRAL",
     news_hdr:"News & Geopolitics", geo_risk:"Geo risk", safe_haven:"Safe-haven bias",
-    econ_lock:"Econ lockout", next_event:"Next event", risk_drivers:"Risk drivers", headline:"Headline", live_geo:"Live market-moving headlines",
+    econ_lock:"Econ lockout", next_event:"Next event", risk_drivers:"Risk drivers", headline:"Headline", live_geo:"Live market-moving headlines", geo_archive:"News archive", geo_search:"search headlines…", geo_empty:"nothing archived yet",
     risk_off:"risk-off (bullish gold)", risk_on:"risk-on", neutral:"neutral",
     locked:"LOCKED", clear:"clear", none_detected:"none detected",
     cot_hdr:"CFTC Positioning (weekly)", speculators:"Speculators", net:"Net", pct_oi:"% of open interest",
@@ -666,7 +694,7 @@ const I18N = {
     comp_hdr:"محرک‌های {a} (کامپوزیت)", disc_comp:"فقط زمینه — سنجشِ فشارِ کلان، نه سیگنالِ معامله.",
     bullish_lean:"تمایل صعودی", bearish_lean:"تمایل نزولی", neutral_lean:"خنثی",
     news_hdr:"اخبار و ژئوپلیتیک", geo_risk:"ریسک ژئوپلیتیک", safe_haven:"تمایل امن‌طلبی",
-    econ_lock:"قفل اقتصادی", next_event:"رویداد بعدی", risk_drivers:"محرک‌های ریسک", headline:"تیتر", live_geo:"تیترهای زندهٔ بازارساز",
+    econ_lock:"قفل اقتصادی", next_event:"رویداد بعدی", risk_drivers:"محرک‌های ریسک", headline:"تیتر", live_geo:"تیترهای زندهٔ بازارساز", geo_archive:"آرشیو خبرها", geo_search:"جستجوی تیترها…", geo_empty:"هنوز چیزی آرشیو نشده",
     risk_off:"ریسک‌گریزی (صعودی برای طلا)", risk_on:"ریسک‌پذیری", neutral:"خنثی",
     locked:"قفل", clear:"باز", none_detected:"موردی یافت نشد",
     cot_hdr:"موقعیت‌گیری CFTC (هفتگی)", speculators:"سفته‌بازان", net:"خالص", pct_oi:"٪ از بهرهٔ باز",
@@ -733,7 +761,7 @@ const I18N = {
     comp_hdr:"{a}-Treiber (Composite)", disc_comp:"Nur Kontext — ein Maß für Makrodruck, KEIN Handelssignal.",
     bullish_lean:"BULLISCHE Neigung", bearish_lean:"BÄRISCHE Neigung", neutral_lean:"NEUTRAL",
     news_hdr:"News & Geopolitik", geo_risk:"Geo-Risiko", safe_haven:"Safe-Haven-Neigung",
-    econ_lock:"Wirtschafts-Sperre", next_event:"Nächstes Ereignis", risk_drivers:"Risikotreiber", headline:"Schlagzeile", live_geo:"Live-marktbewegende Schlagzeilen",
+    econ_lock:"Wirtschafts-Sperre", next_event:"Nächstes Ereignis", risk_drivers:"Risikotreiber", headline:"Schlagzeile", live_geo:"Live-marktbewegende Schlagzeilen", geo_archive:"Nachrichtenarchiv", geo_search:"Schlagzeilen suchen…", geo_empty:"noch nichts archiviert",
     risk_off:"Risk-off (bullisch für Gold)", risk_on:"Risk-on", neutral:"neutral",
     locked:"GESPERRT", clear:"frei", none_detected:"nichts erkannt",
     cot_hdr:"CFTC-Positionierung (wöchentlich)", speculators:"Spekulanten", net:"Netto", pct_oi:"% des Open Interest",
@@ -1348,6 +1376,40 @@ function attachHover(cv){
   cv.addEventListener('mouseleave',()=>{ chartTip.hidden=true; });
 }
 attachHover($('evtChart')); attachHover($('spark')); attachHover($('candleChart'));
+
+// --- News archive ("back room"): open, search, list ---
+(function(){
+  const btn=$('geoArchBtn'), pane=$('geoArchive'), closeB=$('geoArchClose'),
+        search=$('geoArchSearch'), list=$('geoArchList');
+  if(!btn||!pane) return;
+  let tmr=null;
+  function fmtTs(s){ try{ return new Date((s||'').replace(' ','T')).toLocaleString([],{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}); }catch(e){ return (s||'').slice(5,16); } }
+  async function load(){
+    const q=(search.value||'').trim();
+    try{
+      const r=await (await fetch('/geo_history?q='+encodeURIComponent(q),{cache:'no-store'})).json();
+      const items=r.items||[];
+      if(!items.length){ list.innerHTML='<div class="neu" style="font-size:12px;padding:10px">'+t('geo_empty')+'</div>'; return; }
+      list.innerHTML='';
+      items.forEach(it=>{
+        const lean=it.lean==='up'?'up':it.lean==='down'?'down':'neu';
+        const dot=it.lean==='up'?'↑':it.lean==='down'?'↓':'•';
+        const d=document.createElement('div'); d.className='ga-row';
+        d.innerHTML='<span class="ga-t">'+fmtTs(it.ts)+'</span>'+
+                    '<span class="gi-dot '+lean+'">'+dot+'</span>'+
+                    '<span class="gi-txt">'+(it.title||'').replace(/</g,'&lt;')+
+                    (it.cat?' <span class="gi-cat">· '+it.cat+'</span>':'')+'</span>';
+        list.appendChild(d);
+      });
+    }catch(e){ list.innerHTML='<div class="neu" style="padding:10px">—</div>'; }
+  }
+  function open(){ pane.classList.add('open'); load(); search.focus(); }
+  function close(){ pane.classList.remove('open'); }
+  btn.addEventListener('click',open);
+  closeB.addEventListener('click',close);
+  search.addEventListener('input',()=>{ clearTimeout(tmr); tmr=setTimeout(load,300); });
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') close(); });
+})();
 
 // --- AI Analysis card: Technical / Fundamental tabs ---
 (function(){

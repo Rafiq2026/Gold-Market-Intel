@@ -58,7 +58,11 @@ NEWS_RSS = [
 NEWS_PROVIDER = os.environ.get("GBAI_NEWS_PROVIDER", "rss").lower()
 NEWS_API_KEY = os.environ.get("GBAI_NEWSAPI_KEY", "").strip()
 
-REFRESH_SEC = 300                 # re-fetch every 5 minutes
+REFRESH_SEC = 120                 # re-fetch every 2 minutes (fast headline turnover)
+# "Back room": a rolling archive of impactful headlines so a market-mover that scrolled
+# off the live panel is never lost - searchable via GET /geo_history.
+ARCHIVE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "geo_archive.json")
+ARCHIVE_MAX = 400
 BLOCK_BEFORE_MIN = 30             # block window before a high-impact event
 BLOCK_AFTER_MIN = 30             # block window after
 # Tier-1 US events (Fed / jobs / inflation) get a wider protective window.
@@ -139,13 +143,23 @@ def _impact_headlines(headlines, limit=6):
         if score <= 0:
             continue
         cat = _headline_cat(low)
-        # Direction for gold: central-bank items are ambiguous -> neutral unless clearly
-        # dovish/hawkish; risk events lift gold; de-escalation fades it.
-        if calm:
+        # Direction for gold. Monetary-policy / data headlines: DOVISH (easier money,
+        # weaker economy) lifts gold; HAWKISH (tighter, hotter) weighs. Checked with
+        # phrases so "skip a rate hike" / "job market cools" read dovish (bullish),
+        # not hawkish. Risk/war events lift gold; de-escalation fades it.
+        dovish = any(p in low for p in (
+            "rate cut", "cut rate", "cuts rate", "cutting rate", "dovish", "pause",
+            "skip", "hold rate", "holds rate", "cool", "cools", "cooling", "soft",
+            "easing", "ease", "slower", "slow", "weak job", "jobless", "lower rate",
+            "disinflation", "recession"))
+        hawkish = (not dovish) and any(p in low for p in (
+            "rate hike", "hike rate", "raise rate", "raising rate", "hawkish",
+            "sticky", "hot inflation", "strong job", "robust job", "higher for longer",
+            "tighten", "tightening", "reaccelerat"))
+        if cat == "central bank" or any(k in low for k in TIER1_KEYWORDS):
+            lean = "up" if dovish else "down" if hawkish else ""
+        elif calm:
             lean = "down"
-        elif cat == "central bank":
-            lean = "up" if ("cut" in low or "dovish" in low) else \
-                   "down" if ("hike" in low or "hawkish" in low) else ""
         elif score >= 2:
             lean = "up"
         else:
@@ -173,6 +187,53 @@ class NewsFeed:
         self._lock = threading.Lock()
         self._state = self._empty()
         self._thread = None
+        self._archive = self._load_archive()   # rolling "back room" of impactful headlines
+
+    # --------------------------------------------------- headline archive ---
+    def _load_archive(self):
+        try:
+            with open(ARCHIVE_FILE, "r", encoding="utf-8") as fh:
+                d = json.load(fh)
+            if isinstance(d, list):
+                return d[:ARCHIVE_MAX]
+        except Exception:
+            pass
+        return []
+
+    def _save_archive(self):
+        try:
+            with open(ARCHIVE_FILE, "w", encoding="utf-8") as fh:
+                json.dump(self._archive[:ARCHIVE_MAX], fh, ensure_ascii=False)
+        except Exception:
+            pass
+
+    def _merge_archive(self, items):
+        """Add new impactful headlines to the front, de-duplicated by title, each
+        stamped with the UTC time it was first seen."""
+        if not items:
+            return
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
+        with self._lock:
+            seen = set(a.get("title", "")[:60].lower() for a in self._archive)
+            added = []
+            for it in items:
+                key = (it.get("title", "") or "")[:60].lower()
+                if not key or key in seen:
+                    continue
+                seen.add(key)
+                added.append({"title": it.get("title", ""), "cat": it.get("cat", ""),
+                              "lean": it.get("lean", ""), "ts": now})
+            if added:
+                self._archive = (added + self._archive)[:ARCHIVE_MAX]
+                self._save_archive()
+
+    def archive(self, limit=200, q=""):
+        q = (q or "").strip().lower()
+        with self._lock:
+            rows = list(self._archive)
+        if q:
+            rows = [r for r in rows if q in (r.get("title", "") or "").lower()]
+        return {"ok": True, "count": len(rows), "items": rows[:limit]}
 
     def _empty(self) -> dict:
         return {
@@ -352,7 +413,9 @@ class NewsFeed:
         headlines, news_ok = self._fetch_headlines()
         geo_risk, geo_bias, top, sent = self._score_geo(headlines)
         geo_cats, geo_top = _categorize(headlines)
-        geo_headlines = _impact_headlines(headlines)
+        impactful = _impact_headlines(headlines, limit=40)
+        geo_headlines = impactful[:6]
+        self._merge_archive(impactful)      # keep every mover in the "back room"
 
         state = {
             "ok": cal_ok or news_ok,

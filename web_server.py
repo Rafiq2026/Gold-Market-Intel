@@ -194,6 +194,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         if p == "" or p.startswith("/dashboard") or p.startswith("/app"):
             self._send_html("dashboard.html")
+        elif self.path.startswith("/geo_history"):
+            self._send(200, NF.FEED.archive(200, parse_qs(urlparse(self.path).query).get("q", [""])[0]))
         elif self.path.startswith("/news"):
             self._send(200, NF.FEED.snapshot())
         elif self.path.startswith("/positioning") or self.path.startswith("/market/positioning"):

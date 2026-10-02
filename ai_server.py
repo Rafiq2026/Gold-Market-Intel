@@ -221,6 +221,10 @@ class Handler(BaseHTTPRequestHandler):
                              "source": "model" if loaded else "heuristic",
                              "news": NF.FEED.snapshot(),
                              "positioning": PF.FEED.snapshot()})
+        elif self.path.startswith("/geo_history"):
+            from urllib.parse import urlparse, parse_qs
+            qp = parse_qs(urlparse(self.path).query)
+            self._send(200, NF.FEED.archive(200, qp.get("q", [""])[0]))
         elif self.path.startswith("/news"):
             self._send(200, NF.FEED.snapshot())
         elif self.path.startswith("/positioning") or self.path.startswith("/market/positioning"):

@@ -16,6 +16,7 @@ macro_cache.json
 gmi_history.json
 gold_hist.json
 scorecard.json
+geo_archive.json
 # Spreadsheets / local exports
 *.xls
 *.xlsx
