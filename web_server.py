@@ -325,6 +325,18 @@ class Handler(BaseHTTPRequestHandler):
                 except Exception:
                     pass
             self._send(200, {"ok": ok})
+        # Richer news read pushed from the local PC (datacenter IP gets thin news).
+        elif self.path.startswith("/ingest/news"):
+            try:
+                n = int(self.headers.get("Content-Length", 0))
+                d = json.loads(self.rfile.read(n).decode("utf-8")) if n > 0 else {}
+            except Exception:
+                d = {}
+            tok = os.environ.get("GBAI_INGEST_TOKEN", "")
+            if tok and d.get("token") != tok:
+                self._send(403, {"ok": False, "error": "bad token"})
+                return
+            self._send(200, {"ok": NF.FEED.ingest_news(d)})
         # Real broker OHLC bars pushed from the local PC (for the live candle chart).
         elif self.path.startswith("/ingest/bars"):
             try:

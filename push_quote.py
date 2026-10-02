@@ -82,6 +82,36 @@ def push_calendar():
         print("[push] cal err:", repr(e)[:70])
 
 
+def push_news():
+    """The cloud (datacenter IP) gets thin news from Google; the local PC (residential
+    IP) gets the full read. Forward the local server's news + headline archive to the
+    cloud so its live feed + 'back room' archive are complete."""
+    try:
+        base = "http://127.0.0.1:8008"
+        news = json.loads(urllib.request.urlopen(base + "/news", timeout=10).read())
+        arch = {}
+        try:
+            arch = json.loads(urllib.request.urlopen(base + "/geo_history?q=", timeout=10).read())
+        except Exception:
+            arch = {}
+        payload = {
+            "token": TOKEN,
+            "geo_risk": news.get("geo_risk"), "geo_bias": news.get("geo_bias"),
+            "geo_categories": news.get("geo_categories"), "geo_top": news.get("geo_top"),
+            "headline": news.get("headline"), "geo_headlines": news.get("geo_headlines") or [],
+            "fear": news.get("fear"), "gold_direct": news.get("gold_direct"),
+            "archive": (arch.get("items") or [])[:80],
+        }
+        body = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(CLOUD_URL + "/ingest/news", data=body,
+                                     headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=12).read()
+        print("[push] news %d live / %d archive -> cloud" %
+              (len(payload["geo_headlines"]), len(payload["archive"])))
+    except Exception as e:
+        print("[push] news err:", repr(e)[:70])
+
+
 def push_bars():
     """Send the EA's real broker OHLC bars (M15/D1/W1) to the cloud candle chart."""
     try:
@@ -110,7 +140,7 @@ def main():
     if not CLOUD_URL:
         print("Set GBAI_CLOUD_URL (your Render URL) or pass it as arg 1."); return
     print("[push] MT5 %s -> %s  every %ss" % (MT5_QUOTE, CLOUD_URL, INTERVAL))
-    last_cal = 0; last_bars = 0
+    last_cal = 0; last_bars = 0; last_news = 0
     while True:
         try:
             q = read_quote()               # push every cycle so price AND flow stay fresh
@@ -126,6 +156,8 @@ def main():
             push_calendar(); last_cal = time.time()
         if time.time() - last_bars > 60:
             push_bars(); last_bars = time.time()
+        if time.time() - last_news > 120:
+            push_news(); last_news = time.time()
         time.sleep(INTERVAL)
 
 

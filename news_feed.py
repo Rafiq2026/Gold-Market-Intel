@@ -273,7 +273,31 @@ class NewsFeed:
 
     def snapshot(self) -> dict:
         with self._lock:
-            return dict(self._state)
+            s = dict(self._state)
+            # On the cloud the datacenter IP gets thin news; the local PC pipes its
+            # richer read via ingest_news(). Prefer it when fresh (< 10 min).
+            pn = getattr(self, "_pushed_news", None)
+            if pn and (time.time() - getattr(self, "_pushed_news_ts", 0) < 600):
+                for k in ("geo_risk", "geo_bias", "geo_categories", "geo_top",
+                          "headline", "geo_headlines", "fear", "gold_direct"):
+                    if k in pn and pn[k] not in (None, "", [], {}):
+                        s[k] = pn[k]
+                s["ok"] = True
+            return s
+
+    # Accept a richer news read pushed from the local PC (residential IP), and fold
+    # its impactful headlines into the shared archive so the cloud "back room" fills up.
+    def ingest_news(self, d) -> bool:
+        try:
+            if not isinstance(d, dict):
+                return False
+            with self._lock:
+                self._pushed_news = d
+                self._pushed_news_ts = time.time()
+            self._merge_archive(d.get("archive") or d.get("geo_headlines") or [])
+            return True
+        except Exception:
+            return False
 
     # ------------------------------------------------------------ fetches ---
     def _fetch_calendar(self, now: datetime):
