@@ -36,6 +36,17 @@ NEWS_RSS = [
      quote("(gold OR \"central bank\" OR sanctions OR war OR strike OR "
            "tariffs OR Fed OR inflation OR conflict) when:1d") +
      "&hl=en-US&gl=US&ceid=US:en"),
+    # Breaking geopolitics / military / attacks (biggest, fastest market movers).
+    ("https://news.google.com/rss/search?q=" +
+     quote("(attack OR missile OR airstrike OR \"military strike\" OR invasion OR "
+           "escalation OR \"breaking\" OR geopolitical OR Israel OR Iran OR Russia OR "
+           "Ukraine OR China) when:1d") +
+     "&hl=en-US&gl=US&ceid=US:en"),
+    # US macro / Fed / data that move gold intraday.
+    ("https://news.google.com/rss/search?q=" +
+     quote("(Fed OR Powell OR FOMC OR CPI OR inflation OR jobs OR \"interest rate\" OR "
+           "tariffs OR \"US economy\" OR Treasury OR dollar) when:1d") +
+     "&hl=en-US&gl=US&ceid=US:en"),
     "https://www.cnbc.com/id/100727362/device/rss/rss.html",
 ]
 
@@ -99,6 +110,59 @@ def _categorize(headlines):
     return tally, (top[0][1] if top else "")
 
 
+def _headline_cat(low):
+    for cat, kws in _GEO_CATS.items():
+        if any(k in low for k in kws):
+            return cat
+    return ""
+
+
+def _impact_headlines(headlines, limit=6):
+    """Rank the raw headlines by market impact (geopolitical risk + macro weight) and
+    return the top ones as {title, cat, lean} for the live geopolitics feed + the AI.
+    lean = gold direction: 'up' (risk-off/safe-haven), 'down' (de-escalation), '' neutral."""
+    out, seen = [], set()
+    scored = []
+    for h in headlines:
+        if not h or len(h) < 12:
+            continue
+        low = h.lower()
+        score = 0
+        for kw, w in RISK_KEYWORDS.items():
+            if kw in low:
+                score += w
+        calm = any(k in low for k in CALM_KEYWORDS)
+        if calm:
+            score += 3                      # de-escalation is also high-impact (fades gold)
+        if any(k in low for k in TIER1_KEYWORDS):
+            score += 3                      # Fed / CPI / jobs = big intraday movers
+        if score <= 0:
+            continue
+        cat = _headline_cat(low)
+        # Direction for gold: central-bank items are ambiguous -> neutral unless clearly
+        # dovish/hawkish; risk events lift gold; de-escalation fades it.
+        if calm:
+            lean = "down"
+        elif cat == "central bank":
+            lean = "up" if ("cut" in low or "dovish" in low) else \
+                   "down" if ("hike" in low or "hawkish" in low) else ""
+        elif score >= 2:
+            lean = "up"
+        else:
+            lean = ""
+        scored.append((score, h, cat, lean))
+    scored.sort(key=lambda z: z[0], reverse=True)
+    for score, h, cat, lean in scored:
+        key = h.lower()[:60]
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append({"title": h[:160], "cat": cat, "lean": lean})
+        if len(out) >= limit:
+            break
+    return out
+
+
 def _get(url: str, timeout: int = 12) -> bytes:
     req = urllib.request.Request(url, headers=_UA)
     return urllib.request.urlopen(req, timeout=timeout).read()
@@ -127,6 +191,7 @@ class NewsFeed:
             "headline": "",
             "geo_categories": {},
             "geo_top": "",
+            "geo_headlines": [],
             "updated": "",
         }
 
@@ -287,6 +352,7 @@ class NewsFeed:
         headlines, news_ok = self._fetch_headlines()
         geo_risk, geo_bias, top, sent = self._score_geo(headlines)
         geo_cats, geo_top = _categorize(headlines)
+        geo_headlines = _impact_headlines(headlines)
 
         state = {
             "ok": cal_ok or news_ok,
@@ -304,6 +370,7 @@ class NewsFeed:
             "headline": top[:120],
             "geo_categories": geo_cats,
             "geo_top": geo_top,
+            "geo_headlines": geo_headlines,
             "updated": now.strftime("%Y-%m-%d %H:%M:%SZ"),
         }
         with self._lock:

@@ -123,7 +123,16 @@ def build(symbol="XAUUSD", lang="en"):
         gsent += ", driven mainly by %s" % geo_top
     gsent += " — currently %s." % gdir
     parts.append(gsent)
-    if headline:
+    # Live high-impact headlines (geopolitics / Fed / data) so the read reflects what
+    # is moving the market RIGHT NOW, with each item's gold direction.
+    gh = n.get("geo_headlines", []) or []
+    if gh:
+        bits = []
+        for it in gh[:3]:
+            arrow = "↑gold" if it.get("lean") == "up" else "↓gold" if it.get("lean") == "down" else "·"
+            bits.append("%s (%s)" % (it.get("title", "")[:110], arrow))
+        parts.append("Live market-moving headlines: " + " | ".join(bits))
+    elif headline:
         parts.append("Top headline: \"%s\"." % headline[:140])
 
     # 3) positioning (per symbol)
