@@ -406,6 +406,10 @@
   <label><span data-i18n="al_flip">Alert on composite flip</span> <span class="switch"><input type="checkbox" id="alFlip" checked><span class="slider"></span></span></label>
   <label><span data-i18n="al_level">Gold price level</span> <input type="text" id="alLevel" data-i18n-ph="al_level_ph" placeholder="e.g. 4110"></label>
   <label><span data-i18n="al_levelon">Alert on level break</span> <span class="switch"><input type="checkbox" id="alLevelOn"><span class="slider"></span></span></label>
+  <label><span data-i18n="al_move">⚡ Sudden-move alert</span> <span class="switch"><input type="checkbox" id="alMoveOn" checked><span class="slider"></span></span></label>
+  <label><span data-i18n="al_moveusd">Move size ($)</span> <input type="number" id="alMoveUsd" min="1" max="100" value="8"></label>
+  <label><span data-i18n="al_movemin">…within (min)</span> <input type="number" id="alMoveMin" min="1" max="120" value="10"></label>
+  <label><span data-i18n="al_news">📰 Breaking-news alert</span> <span class="switch"><input type="checkbox" id="alNewsOn" checked><span class="slider"></span></span></label>
   <button class="abtn" id="alTest" data-i18n="al_test" style="margin-top:8px;width:100%">▶ Test sound</button>
   <div class="afeed" id="alFeed"><div class="neu" data-i18n="al_none">No alerts yet — armed and watching.</div></div>
 </div>
@@ -622,6 +626,8 @@ const I18N = {
     connecting:"connecting…", updated:"updated", news_ok:"news", cot_live:"COT live", events_lbl:"events",
     al_head:"🔔 Alerts & Sounds", al_master:"Master", al_sound:"Sound", al_notif:"Desktop notification",
     al_vol:"Volume", al_evtmin:"High-impact event alert (min before)", al_flip:"Alert on composite flip",
+    al_move:"⚡ Sudden-move alert", al_moveusd:"Move size ($)", al_movemin:"…within (min)", al_news:"📰 Breaking-news alert",
+    al_move_t:"Sudden gold move", al_move_in:"in", al_cause:"likely cause", al_news_t:"Breaking", al_bull:"gold up", al_bear:"gold down",
     al_level:"Gold price level", al_levelon:"Alert on level break", al_test:"▶ Test sound",
     al_none:"No alerts yet — armed and watching.", al_level_ph:"e.g. 4110",
     comp_hdr:"{a} Drivers (composite)", disc_comp:"Context only — a read of macro pressure, NOT a trade signal.",
@@ -689,6 +695,8 @@ const I18N = {
     connecting:"در حال اتصال…", updated:"به‌روزرسانی", news_ok:"اخبار", cot_live:"COT زنده", events_lbl:"رویدادها",
     al_head:"🔔 هشدارها و صداها", al_master:"اصلی", al_sound:"صدا", al_notif:"اعلان دسکتاپ",
     al_vol:"بلندی صدا", al_evtmin:"هشدار رویداد مهم (دقیقه قبل)", al_flip:"هشدار چرخش کامپوزیت",
+    al_move:"⚡ هشدار حرکت ناگهانی", al_moveusd:"اندازه حرکت ($)", al_movemin:"…در عرض (دقیقه)", al_news:"📰 هشدار خبر فوری",
+    al_move_t:"حرکت ناگهانی طلا", al_move_in:"در", al_cause:"علت محتمل", al_news_t:"فوری", al_bull:"صعودی طلا", al_bear:"نزولی طلا",
     al_level:"سطح قیمت طلا", al_levelon:"هشدار شکست سطح", al_test:"▶ تست صدا",
     al_none:"هنوز هشداری نیست — آماده و در حال رصد.", al_level_ph:"مثلاً ۴۱۱۰",
     comp_hdr:"محرک‌های {a} (کامپوزیت)", disc_comp:"فقط زمینه — سنجشِ فشارِ کلان، نه سیگنالِ معامله.",
@@ -756,6 +764,8 @@ const I18N = {
     connecting:"verbinde…", updated:"aktualisiert", news_ok:"News", cot_live:"COT live", events_lbl:"Ereignisse",
     al_head:"🔔 Alarme & Töne", al_master:"Haupt", al_sound:"Ton", al_notif:"Desktop-Benachrichtigung",
     al_vol:"Lautstärke", al_evtmin:"Alarm für wichtiges Ereignis (Min. vorher)", al_flip:"Alarm bei Composite-Wechsel",
+    al_move:"⚡ Alarm bei plötzlicher Bewegung", al_moveusd:"Bewegungsgröße ($)", al_movemin:"…innerhalb (Min.)", al_news:"📰 Eilmeldungs-Alarm",
+    al_move_t:"Plötzliche Goldbewegung", al_move_in:"in", al_cause:"wahrscheinliche Ursache", al_news_t:"Eilmeldung", al_bull:"Gold hoch", al_bear:"Gold runter",
     al_level:"Gold-Preisniveau", al_levelon:"Alarm bei Niveaubruch", al_test:"▶ Ton testen",
     al_none:"Noch keine Alarme — scharf und wachsam.", al_level_ph:"z. B. 4110",
     comp_hdr:"{a}-Treiber (Composite)", disc_comp:"Nur Kontext — ein Maß für Makrodruck, KEIN Handelssignal.",
@@ -1740,7 +1750,8 @@ window.addEventListener('resize',()=>{
 (function(){
   const $ = id => document.getElementById(id);
   const LSK = 'gmi_alerts_v1';
-  const def = {master:false, sound:true, notif:true, vol:35, evtMin:15, flip:true, level:'', levelOn:false};
+  const def = {master:false, sound:true, notif:true, vol:35, evtMin:15, flip:true, level:'', levelOn:false,
+               moveOn:true, moveUsd:8, moveMin:10, newsOn:true};
   let cfg = Object.assign({}, def);
   try{ const s=JSON.parse(localStorage.getItem(LSK)); if(s) cfg=Object.assign(cfg,s); }catch(e){}
 
@@ -1749,6 +1760,7 @@ window.addEventListener('resize',()=>{
     $('alMaster').checked=cfg.master; $('alSound').checked=cfg.sound; $('alNotif').checked=cfg.notif;
     $('alVol').value=cfg.vol; $('alEvtMin').value=cfg.evtMin; $('alFlip').checked=cfg.flip;
     $('alLevel').value=cfg.level; $('alLevelOn').checked=cfg.levelOn;
+    $('alMoveOn').checked=cfg.moveOn; $('alMoveUsd').value=cfg.moveUsd; $('alMoveMin').value=cfg.moveMin; $('alNewsOn').checked=cfg.newsOn;
     $('alertToggle').classList.toggle('on', cfg.master);
     const mb=$('muteBtn'); if(mb){ mb.textContent=cfg.sound?'🔊':'🔇'; mb.title=cfg.sound?'Mute sounds':'Unmute sounds'; mb.classList.toggle('muted', !cfg.sound); }
   }
@@ -1799,7 +1811,10 @@ window.addEventListener('resize',()=>{
       const v=Math.max(0,Math.min(1,cfg.vol/100))*0.5;
       const now=AC.currentTime+0.02;
       let seq;
-      if(kind==='event')       // warm rising arpeggio that blooms into a major chord
+      if(kind==='spike')       // URGENT: insistent rising triple, repeated — grabs attention fast
+        seq=[[659.25,0,.5,.72],[880.00,.18,.5,.75],[1046.50,.36,.7,.8],
+             [659.25,.72,.5,.72],[880.00,.90,.5,.75],[1046.50,1.08,.9,.82]];
+      else if(kind==='event')  // warm rising arpeggio that blooms into a major chord
         seq=[[392.00,0,1.6,.55],[523.25,.16,1.6,.55],[659.25,.32,1.7,.6],[783.99,.48,1.9,.65]];
       else if(kind==='level')  // mellow, catchy two-note rise
         seq=[[587.33,0,1.3,.6],[880.00,.14,1.7,.62]];
@@ -1836,6 +1851,9 @@ window.addEventListener('resize',()=>{
   let firedEvent=null;     // event title we've already alerted for
   let lastComposite=null;  // last composite sign
   let lastPrice=null;      // last gold price (for cross detection)
+  let priceHist=[];        // [{t,p}] rolling window for sudden-move detection
+  let lastSpikeAt=0;       // last sudden-move alert time (cooldown)
+  let lastBreaking='';     // last breaking-news headline we alerted for
 
   async function tick(){
     if(!cfg.master) return;
@@ -1882,6 +1900,46 @@ window.addEventListener('resize',()=>{
         }catch(e){}
       }
     }
+    // 4) SUDDEN MOVE — gold moved more than $X within Y minutes (names the likely driver)
+    if(cfg.moveOn){
+      try{
+        const q=await (await fetch('/quotes',{cache:'no-store'})).json();
+        const p=q.symbols && q.symbols.XAUUSD && q.symbols.XAUUSD.price;
+        if(p){
+          const now=Date.now();
+          priceHist.push({t:now,p:p});
+          const winMs=(cfg.moveMin||10)*60000;
+          while(priceHist.length && now-priceHist[0].t>winMs) priceHist.shift();
+          // extreme move across the window
+          let lo=p, hi=p, loT=now, hiT=now;
+          for(const h of priceHist){ if(h.p<lo){lo=h.p;loT=h.t;} if(h.p>hi){hi=h.p;hiT=h.t;} }
+          const span=hi-lo;
+          const thr=Math.max(1, cfg.moveUsd||8);
+          if(span>=thr && now-lastSpikeAt>winMs){      // one alert per window
+            lastSpikeAt=now;
+            const up = hiT>=loT;                         // which extreme came last = direction
+            const n2=await (await fetch('/news',{cache:'no-store'})).json().catch(()=>({}));
+            const gh=(n2.geo_headlines||[])[0];
+            const cause = gh ? (' — '+t('al_cause')+': '+(gh.title||'').slice(0,80)) : '';
+            fire('spike', (up?'⚡ ':'⚡ ')+t('al_move_t'),
+                 'Gold '+(up?'▲ +':'▼ −')+span.toFixed(2)+' '+t('al_move_in')+' '+(cfg.moveMin||10)+'m (now '+p.toFixed(2)+')'+cause);
+          }
+        }
+      }catch(e){}
+    }
+    // 5) BREAKING NEWS — a NEW high-impact headline just appeared (often precedes the move)
+    if(cfg.newsOn){
+      try{
+        const nn=await (await fetch('/news',{cache:'no-store'})).json();
+        const gh=(nn.geo_headlines||[])[0];
+        const risk=+nn.geo_risk||0;
+        if(gh && gh.title && gh.title!==lastBreaking && risk>=0.45){
+          lastBreaking=gh.title;
+          const dir = gh.lean==='up'?' ('+t('al_bull')+')' : gh.lean==='down'?' ('+t('al_bear')+')' : '';
+          fire('event','📰 '+t('al_news_t'), gh.title.slice(0,100)+dir);
+        } else if(gh && gh.title && !lastBreaking){ lastBreaking=gh.title; } // prime without firing on first load
+      }catch(e){}
+    }
   }
 
   // --- wire controls ---
@@ -1901,7 +1959,11 @@ window.addEventListener('resize',()=>{
   $('alFlip').addEventListener('change',e=>{cfg.flip=e.target.checked;save();});
   $('alLevel').addEventListener('change',e=>{cfg.level=e.target.value.trim();save();});
   $('alLevelOn').addEventListener('change',e=>{cfg.levelOn=e.target.checked;save();});
-  $('alTest').addEventListener('click',()=>{ beep('event'); toast('🔔 Test','Sound & alerts are working.'); });
+  $('alMoveOn').addEventListener('change',e=>{cfg.moveOn=e.target.checked;save();});
+  $('alMoveUsd').addEventListener('change',e=>{cfg.moveUsd=+e.target.value||8;save();});
+  $('alMoveMin').addEventListener('change',e=>{cfg.moveMin=+e.target.value||10;save();});
+  $('alNewsOn').addEventListener('change',e=>{cfg.newsOn=e.target.checked;save();});
+  $('alTest').addEventListener('click',()=>{ beep('spike'); toast('🔔 Test','Sound & alerts are working.'); });
   const _mb=$('muteBtn'); if(_mb) _mb.addEventListener('click',()=>{ cfg.sound=!cfg.sound; save(); if(cfg.sound){beep('flip');} });
 
   // --- Tech HOVER blip: a short soft sci-fi click when the mouse enters a panel ---
