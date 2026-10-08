@@ -142,6 +142,33 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as exc:
             self._send(404, {"ok": False, "error": "page not found: %s" % exc})
 
+    def _send_static(self, url_path):
+        """Serve a file from the local game/ folder (embedded Candle Runner web copy)."""
+        from urllib.parse import urlparse, unquote
+        rel = unquote(urlparse(url_path).path)[len("/game"):].lstrip("/")
+        if rel == "":
+            rel = "index.html"
+        base = os.path.join(HERE, "game")
+        full = os.path.normpath(os.path.join(base, rel))
+        if not full.startswith(base):
+            self._send(403, {"ok": False, "error": "forbidden"})
+            return
+        ctypes = {".html": "text/html; charset=utf-8", ".css": "text/css",
+                  ".js": "application/javascript", ".woff2": "font/woff2",
+                  ".woff": "font/woff", ".png": "image/png", ".jpg": "image/jpeg",
+                  ".svg": "image/svg+xml", ".json": "application/json", ".ico": "image/x-icon"}
+        ext = os.path.splitext(full)[1].lower()
+        try:
+            with open(full, "rb") as fh:
+                body = fh.read()
+            self.send_response(200)
+            self.send_header("Content-Type", ctypes.get(ext, "application/octet-stream"))
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        except Exception as exc:
+            self._send(404, {"ok": False, "error": "not found: %s" % exc})
+
     # ------------------------------------------------------------ auth utils
     def _cookies(self):
         out = {}
@@ -194,6 +221,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         if p == "" or p.startswith("/dashboard") or p.startswith("/app"):
             self._send_html("dashboard.html")
+        elif p.startswith("/game"):
+            self._send_static(self.path)
         elif self.path.startswith("/geo_history"):
             self._send(200, NF.FEED.archive(200, parse_qs(urlparse(self.path).query).get("q", [""])[0]))
         elif self.path.startswith("/news"):

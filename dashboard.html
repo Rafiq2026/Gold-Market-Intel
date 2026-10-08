@@ -92,6 +92,20 @@
   .geoitem .gi-dot{flex:0 0 auto;font-weight:700;font-size:11px}
   .geoitem .gi-txt{color:var(--txt);word-break:break-word}
   .geoitem .gi-cat{color:var(--dim);font-size:10px;white-space:nowrap}
+  /* --- Candle Runner floating game window --- */
+  #gamePanel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:320;
+    width:min(960px,96vw);height:min(620px,88vh);display:none;flex-direction:column;
+    background:linear-gradient(158deg,rgba(13,19,22,.99),rgba(5,8,10,.99));
+    border:1.5px solid var(--cyan2);border-radius:14px;overflow:hidden;
+    box-shadow:0 34px 80px -20px rgba(0,0,0,.94),0 0 32px rgba(65,230,255,.16)}
+  #gamePanel.open{display:flex}
+  #gamePanel .gp-head{display:flex;align-items:center;gap:8px;padding:8px 12px;
+    background:rgba(0,0,0,.35);border-bottom:1px solid var(--line);cursor:move}
+  #gamePanel .gp-title{font:800 14px 'Rajdhani',var(--head,sans-serif);letter-spacing:1px;color:var(--cyan)}
+  #gamePanel .gp-sp{flex:1}
+  #gamePanel .gp-body{flex:1;position:relative;background:#05080a}
+  #gamePanel .gp-body iframe{width:100%;height:100%;border:0;display:block}
+  #gamePanel .gp-hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:13px}
   /* --- News archive ("back room") overlay --- */
   #geoArchive{position:fixed;top:6vh;left:50%;transform:translateX(-50%);z-index:300;width:min(680px,94vw);
     max-height:84vh;display:none;flex-direction:column;background:linear-gradient(158deg,rgba(20,32,50,.99),rgba(9,14,24,.99));
@@ -392,8 +406,20 @@
   </select>
   <button class="abtn" id="muteBtn" data-i18n-title="mute_title" title="Mute / unmute sounds" style="margin-left:8px">🔊</button>
   <button class="abtn" id="alertToggle" data-i18n="alerts_btn" data-i18n-title="alerts_title" title="Alerts &amp; sounds" style="margin-left:8px">🔔 Alerts</button>
+  <button class="abtn" id="gameToggle" data-i18n-title="game_title" title="Candle Runner — take a break" style="margin-left:8px">🎮 Arcade</button>
   <div class="meta" id="meta" data-i18n="connecting" style="margin-left:14px">connecting…</div>
 </header>
+
+<!-- Candle Runner game (floating, lazy-loaded) -->
+<div id="gamePanel">
+  <div class="gp-head">
+    <span class="gp-title">🎮 Candle Runner</span>
+    <span class="gp-sp"></span>
+    <button class="abtn" id="gameReload" title="Restart game" style="padding:2px 8px">⟳</button>
+    <button class="abtn" id="gameClose" title="Close" style="padding:2px 9px">✕</button>
+  </div>
+  <div class="gp-body" id="gameBody"><div class="gp-hint" data-i18n="game_loading">loading game…</div></div>
+</div>
 
 <!-- Alerts & sounds panel -->
 <div id="alertPanel">
@@ -628,6 +654,7 @@ const I18N = {
     al_vol:"Volume", al_evtmin:"High-impact event alert (min before)", al_flip:"Alert on composite flip",
     al_move:"⚡ Sudden-move alert", al_moveusd:"Move size ($)", al_movemin:"…within (min)", al_news:"📰 Breaking-news alert",
     al_move_t:"Sudden gold move", al_move_in:"in", al_cause:"likely cause", al_news_t:"Breaking", al_bull:"gold up", al_bear:"gold down",
+    game_title:"Candle Runner — take a break", game_loading:"loading game…",
     al_level:"Gold price level", al_levelon:"Alert on level break", al_test:"▶ Test sound",
     al_none:"No alerts yet — armed and watching.", al_level_ph:"e.g. 4110",
     comp_hdr:"{a} Drivers (composite)", disc_comp:"Context only — a read of macro pressure, NOT a trade signal.",
@@ -697,6 +724,7 @@ const I18N = {
     al_vol:"بلندی صدا", al_evtmin:"هشدار رویداد مهم (دقیقه قبل)", al_flip:"هشدار چرخش کامپوزیت",
     al_move:"⚡ هشدار حرکت ناگهانی", al_moveusd:"اندازه حرکت ($)", al_movemin:"…در عرض (دقیقه)", al_news:"📰 هشدار خبر فوری",
     al_move_t:"حرکت ناگهانی طلا", al_move_in:"در", al_cause:"علت محتمل", al_news_t:"فوری", al_bull:"صعودی طلا", al_bear:"نزولی طلا",
+    game_title:"Candle Runner — کمی استراحت", game_loading:"در حال بارگذاری بازی…",
     al_level:"سطح قیمت طلا", al_levelon:"هشدار شکست سطح", al_test:"▶ تست صدا",
     al_none:"هنوز هشداری نیست — آماده و در حال رصد.", al_level_ph:"مثلاً ۴۱۱۰",
     comp_hdr:"محرک‌های {a} (کامپوزیت)", disc_comp:"فقط زمینه — سنجشِ فشارِ کلان، نه سیگنالِ معامله.",
@@ -766,6 +794,7 @@ const I18N = {
     al_vol:"Lautstärke", al_evtmin:"Alarm für wichtiges Ereignis (Min. vorher)", al_flip:"Alarm bei Composite-Wechsel",
     al_move:"⚡ Alarm bei plötzlicher Bewegung", al_moveusd:"Bewegungsgröße ($)", al_movemin:"…innerhalb (Min.)", al_news:"📰 Eilmeldungs-Alarm",
     al_move_t:"Plötzliche Goldbewegung", al_move_in:"in", al_cause:"wahrscheinliche Ursache", al_news_t:"Eilmeldung", al_bull:"Gold hoch", al_bear:"Gold runter",
+    game_title:"Candle Runner — eine Pause", game_loading:"Spiel wird geladen…",
     al_level:"Gold-Preisniveau", al_levelon:"Alarm bei Niveaubruch", al_test:"▶ Ton testen",
     al_none:"Noch keine Alarme — scharf und wachsam.", al_level_ph:"z. B. 4110",
     comp_hdr:"{a}-Treiber (Composite)", disc_comp:"Nur Kontext — ein Maß für Makrodruck, KEIN Handelssignal.",
@@ -1965,6 +1994,32 @@ window.addEventListener('resize',()=>{
   $('alNewsOn').addEventListener('change',e=>{cfg.newsOn=e.target.checked;save();});
   $('alTest').addEventListener('click',()=>{ beep('spike'); toast('🔔 Test','Sound & alerts are working.'); });
   const _mb=$('muteBtn'); if(_mb) _mb.addEventListener('click',()=>{ cfg.sound=!cfg.sound; save(); if(cfg.sound){beep('flip');} });
+
+  // --- Candle Runner floating game: toggle, lazy-load iframe, drag, reload ---
+  (function(){
+    const btn=$('gameToggle'), pane=$('gamePanel'), body=$('gameBody'),
+          closeB=$('gameClose'), reloadB=$('gameReload');
+    if(!btn||!pane) return;
+    let loaded=false;
+    function ensure(){ if(loaded) return;
+      const f=document.createElement('iframe'); f.id='gameFrame'; f.src='/game/';
+      f.title='Candle Runner'; f.allow='autoplay; fullscreen';
+      body.innerHTML=''; body.appendChild(f); loaded=true; }
+    function open(){ ensure(); pane.classList.add('open'); }
+    function close(){ pane.classList.remove('open'); }   // keep iframe (progress persists)
+    btn.addEventListener('click',()=>{ pane.classList.contains('open')?close():open(); });
+    closeB.addEventListener('click',close);
+    reloadB.addEventListener('click',()=>{ const f=$('gameFrame'); if(f) f.src='/game/'; });
+    document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&pane.classList.contains('open')) close(); });
+    // drag by the header
+    const head=pane.querySelector('.gp-head'); let drag=null;
+    head.addEventListener('mousedown',e=>{ if(e.target.tagName==='BUTTON') return;
+      const r=pane.getBoundingClientRect(); drag={x:e.clientX,y:e.clientY,l:r.left,t:r.top};
+      pane.style.transform='none'; pane.style.left=r.left+'px'; pane.style.top=r.top+'px'; e.preventDefault(); });
+    window.addEventListener('mousemove',e=>{ if(!drag) return;
+      pane.style.left=(drag.l+e.clientX-drag.x)+'px'; pane.style.top=(drag.t+e.clientY-drag.y)+'px'; });
+    window.addEventListener('mouseup',()=>{ drag=null; });
+  })();
 
   // --- Tech HOVER blip: a short soft sci-fi click when the mouse enters a panel ---
   let _lastHover=0, _lastEl=null;
