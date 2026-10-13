@@ -1921,6 +1921,14 @@ window.addEventListener('resize',()=>{
   let priceHist=[];        // [{t,p}] rolling window for sudden-move detection
   let lastSpikeAt=0;       // last sudden-move alert time (cooldown)
   let lastBreaking='';     // last breaking-news headline we alerted for
+  // Reject glitch ticks: gold is in the thousands, and it cannot move ±35% in one
+  // 20s tick. A stray forex-leak value (e.g. 1.12) would otherwise cross the level
+  // both ways and fire the alarm endlessly ("rooster crowing at the wrong time").
+  function goldOK(p, ref){
+    if(!(p>0) || p<100) return false;                       // <100 = not gold (glitch)
+    if(ref!=null && ref>0 && Math.abs(p-ref)/ref > 0.35) return false; // impossible jump
+    return true;
+  }
 
   async function tick(){
     if(!cfg.master) return;
@@ -1958,7 +1966,7 @@ window.addEventListener('resize',()=>{
         try{
           const q=await (await fetch('/quotes',{cache:'no-store'})).json();
           const p=q.symbols && q.symbols.XAUUSD && q.symbols.XAUUSD.price;
-          if(p){
+          if(goldOK(p, lastPrice)){                 // ignore glitch values
             if(lastPrice!==null && ((lastPrice<lv && p>=lv) || (lastPrice>lv && p<=lv))){
               fire('level','🎯 Level break', 'Gold crossed '+lv+' (now '+p.toFixed(2)+')');
             }
@@ -1972,7 +1980,8 @@ window.addEventListener('resize',()=>{
       try{
         const q=await (await fetch('/quotes',{cache:'no-store'})).json();
         const p=q.symbols && q.symbols.XAUUSD && q.symbols.XAUUSD.price;
-        if(p){
+        const _ref = priceHist.length ? priceHist[priceHist.length-1].p : null;
+        if(goldOK(p, _ref)){                        // ignore glitch values
           const now=Date.now();
           priceHist.push({t:now,p:p});
           const winMs=(cfg.moveMin||10)*60000;
