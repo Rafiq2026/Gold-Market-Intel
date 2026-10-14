@@ -1016,6 +1016,17 @@ async function loadSeries(){
   try{ const d=await (await fetch('/series?symbol='+_symbol,{cache:'no-store'})).json();
        if(d.series && d.series.length) _priceSeries=d.series; }catch(e){}
 }
+// Fine OHLC candles (M1 if the broker pushes them, else M5) so event reactions are
+// measured from real candle HIGHS/LOWS - that captures the violent release spike
+// (e.g. the 40-dollar 1-min CPI candle) that a close-only series smooths away.
+let _reactCandles=[];
+async function loadReactCandles(){
+  for(const tf of ['M1','M5']){
+    try{ const d=await (await fetch('/ohlc?symbol='+_symbol+'&tf='+tf,{cache:'no-store'})).json();
+         const c=d.candles||[];
+         if(c.length && c[0].length>=5){ _reactCandles=c; return; } }catch(e){}
+  }
+}
 
 // A news release's REAL impact is the move in the first minutes, not the drift
 // hours later (that's traders, and it gets contaminated by the NEXT event). So we
@@ -1026,7 +1037,20 @@ function reactionFor(whenISO){
   // Isolated window [release, release+15min]: the news's own immediate impact, not
   // the later drift (traders) and not contaminated by the NEXT event. On the site
   // this is transient; the PERMANENT record lives server-side (/event_history).
-  const et=Date.parse(whenISO), winEnd=et+REACT_WIN_MIN*60000, s=_priceSeries;
+  const et=Date.parse(whenISO), winEnd=et+REACT_WIN_MIN*60000;
+  // Prefer real OHLC candles (highs/lows capture the spike); fall back to the quote series.
+  const C=_reactCandles;
+  if(C && C.length && C[0].length>=5){
+    const win=C.filter(c=>c[0]>=et && c[0]<=winEnd);
+    if(win.length){
+      const before=C.filter(c=>c[0]<et);
+      const pre=before.length?before[before.length-1][4]:win[0][1];
+      let lo=1e12,hi=-1e12; win.forEach(c=>{ if(c[3]<lo)lo=c[3]; if(c[2]>hi)hi=c[2]; });
+      const last=win[win.length-1][4];
+      return {pre,lo,hi,last,drop:lo-pre,pop:hi-pre,net:last-pre,win:REACT_WIN_MIN,ohlc:true};
+    }
+  }
+  const s=_priceSeries;
   if(!s || s.length<2) return null;
   const baseT=et-5*60000;
   let pre=null, preT=null;
@@ -1317,7 +1341,10 @@ async function refresh(){
         const richLbl=e.impact_label||(inLine?t('inline_watch'):t('surprise_driven'));
         let expTxt=pv.rich?richLbl:pv.label, expCls=dc;
         if(e.hours_until<=0.15){ const rx=reactionFor(e.when);
-          if(rx){ const dd=decFor(_symbol); expCls=rx.net>=0?'up':'down'; expTxt=t('reacted_now',{v:fmtSigned(rx.net.toFixed(dd))}); } }
+          if(rx){ const dd=decFor(_symbol);
+            // the news's real impact = the violent spike (biggest excursion), not the settle
+            const peak=Math.abs(rx.drop)>=Math.abs(rx.pop)?rx.drop:rx.pop;
+            expCls=peak>=0?'up':'down'; expTxt=t('reacted_now',{v:fmtSigned(peak.toFixed(dd))}); } }
         const it=document.createElement('div');
         it.className='evtitem';
         it.dataset.idx=i;
@@ -1604,7 +1631,7 @@ $('symSel').addEventListener('change',e=>{
   _symbol=e.target.value;
   try{ localStorage.setItem('gmi_symbol',_symbol); }catch(_){}
   _priceSeries=[]; $('detailCard').hidden=true;
-  loadSeries(); pollQuotes(); refresh(); loadMarketSize(_symbol); loadCandles();
+  loadSeries(); loadReactCandles(); pollQuotes(); refresh(); loadMarketSize(_symbol); loadCandles();
 });
 // custom glass dropdown that drives the (hidden) native <select>
 (function(){
@@ -1802,6 +1829,7 @@ async function loadEvents(){
 }
 loadEvents(); setInterval(loadEvents, 60000);
 loadSeries(); setInterval(loadSeries, 60000);
+loadReactCandles(); setInterval(loadReactCandles, 60000);
 loadCandles(); setInterval(loadCandles, 30000);
 loadHeatmap(); setInterval(loadHeatmap, 60000);
 renderWatch(); setInterval(renderWatch, 60000);

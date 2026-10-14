@@ -91,6 +91,23 @@ def _reaction_win(series, when_iso, win_min):
             "pop": max(win) - base, "drop": min(win) - base}
 
 
+def _reaction_ohlc(candles, when_iso, win_min):
+    """Isolated reaction from real OHLC candles (captures the violent intra-candle
+    spike a close-only series misses - e.g. the 40-dollar 1-min CPI candle). Uses
+    candle highs/lows for pop/drop, close for net. candles = [[ms,o,h,l,c],...]."""
+    try:
+        et = _ms(when_iso)
+    except Exception:
+        return None
+    win = [c for c in candles if len(c) >= 5 and et <= c[0] <= et + win_min * 60000]
+    if not win:
+        return None
+    before = [c for c in candles if len(c) >= 5 and c[0] < et]
+    pre = before[-1][4] if before else win[0][1]      # close just before release, else open of release candle
+    highs = [c[2] for c in win]; lows = [c[3] for c in win]
+    return {"pre": pre, "net": win[-1][4] - pre, "pop": max(highs) - pre, "drop": min(lows) - pre}
+
+
 class Scorecard:
     def __init__(self):
         self._lock = threading.Lock()
@@ -165,7 +182,19 @@ class Scorecard:
                 else:
                     result = "miss"
                 eid = "%s|%s|%s" % (symbol, e.get("title", ""), e.get("when", ""))
-                r30 = _reaction_win(series, e.get("when", ""), WINDOW_SHORT_MIN)
+                # immediate reaction from real OHLC (M1 best, else M5) so the violent
+                # release-candle spike is captured; fall back to the close-only series.
+                r30 = None
+                for _tf in ("M1", "M5"):
+                    try:
+                        cand = (QF.FEED.ohlc(symbol, _tf) or {}).get("candles") or []
+                    except Exception:
+                        cand = []
+                    r30 = _reaction_ohlc(cand, e.get("when", ""), WINDOW_SHORT_MIN)
+                    if r30:
+                        break
+                if not r30:
+                    r30 = _reaction_win(series, e.get("when", ""), WINDOW_SHORT_MIN)
                 with self._lock:
                     self._rec[eid] = {
                         "symbol": symbol, "title": e.get("title", ""), "currency": e.get("currency", ""),

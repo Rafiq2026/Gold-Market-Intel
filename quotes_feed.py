@@ -27,10 +27,10 @@ _UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 _URL = "https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=1m&range=1d"
 _CHART = "https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=%s&range=%s"
 # candle timeframe CODE -> (yahoo interval, range) for non-gold / fallback.
-_YMAP = {"M5": ("5m", "5d"), "M15": ("15m", "5d"), "M30": ("30m", "1mo"),
+_YMAP = {"M1": ("1m", "1d"), "M5": ("5m", "5d"), "M15": ("15m", "5d"), "M30": ("30m", "1mo"),
          "H1": ("60m", "1mo"), "H4": ("60m", "3mo"), "D1": ("1d", "6mo"), "W1": ("1wk", "2y")}
 # code -> approx bar spacing in ms (to synthesize timestamps for broker bars)
-_STEP = {"M5": 300000, "M15": 900000, "M30": 1800000, "H1": 3600000,
+_STEP = {"M1": 60000, "M5": 300000, "M15": 900000, "M30": 1800000, "H1": 3600000,
          "H4": 14400000, "D1": 86400000, "W1": 604800000}
 
 
@@ -299,7 +299,7 @@ class QuotesFeed:
         bars to GoldBrainAI_Bars.csv). data = {"M15":[[o,h,l,c],...], "D1":[...], "W1":[...]}."""
         try:
             if isinstance(data, dict) and any(data.get(k) for k in
-                    ("M5", "M15", "M30", "H1", "H4", "D1", "W1")):
+                    ("M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1")):
                 self._pushed_bars = data
                 self._pushed_bars_ts = time.time()
                 return True

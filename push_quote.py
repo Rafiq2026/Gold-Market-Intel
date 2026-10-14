@@ -117,7 +117,7 @@ def push_bars():
     try:
         if time.time() - os.path.getmtime(MT5_BARS) > 3600:
             return
-        bars = {"M5": [], "M15": [], "M30": [], "H1": [], "H4": [], "D1": [], "W1": []}
+        bars = {"M1": [], "M5": [], "M15": [], "M30": [], "H1": [], "H4": [], "D1": [], "W1": []}
         with open(MT5_BARS, "r", encoding="ascii", errors="ignore") as fh:
             for ln in fh:
                 p = ln.strip().split(",")
