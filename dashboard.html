@@ -1012,8 +1012,17 @@ async function loadSeries(){
        if(d.series && d.series.length) _priceSeries=d.series; }catch(e){}
 }
 
+// A news release's REAL impact is the move in the first minutes, not the drift
+// hours later (that's traders, and it gets contaminated by the NEXT event). So we
+// measure ONLY an isolated window right after release, then FREEZE it (cached in
+// localStorage) so a past event's reaction never drifts and never disappears.
+const REACT_WIN_MIN = 30;
+function rxnKey(whenISO){ return 'gmi_rxn_'+_symbol+'_'+whenISO; }
+function rxnCached(whenISO){ try{ const c=localStorage.getItem(rxnKey(whenISO)); return c?JSON.parse(c):null; }catch(_){ return null; } }
 function reactionFor(whenISO){
-  const et=Date.parse(whenISO), s=_priceSeries;
+  const et=Date.parse(whenISO), winEnd=et+REACT_WIN_MIN*60000, s=_priceSeries;
+  const cached=rxnCached(whenISO);         // frozen permanent record (if any)
+  if(cached) return cached;                // once frozen, always use it (no drift, never lost)
   if(!s || s.length<2) return null;
   // Clean pre-event baseline: price ~5 min BEFORE release (before the move starts).
   const baseT=et-5*60000;
@@ -1023,12 +1032,17 @@ function reactionFor(whenISO){
     if(s[0][0]>et+30*60000) return null;
     pre=s[0][1]; preT=s[0][0];
   }
-  const after=s.filter(pt=>pt[0]>=et);
-  if(!after.length) return null;
-  let lo=1e12, hi=-1e12; const last=after[after.length-1][1];
-  after.forEach(pt=>{ if(pt[1]<lo)lo=pt[1]; if(pt[1]>hi)hi=pt[1]; });
-  return {pre,lo,hi,last,drop:lo-pre,pop:hi-pre,net:last-pre,
-          approx:(et-preT)>40*60*1000};
+  // ONLY the isolated window [release, release+WIN]: not contaminated by later
+  // events, and it stops changing once the window closes.
+  const win=s.filter(pt=>pt[0]>=et && pt[0]<=winEnd);
+  if(!win.length) return null;
+  let lo=1e12, hi=-1e12; const last=win[win.length-1][1];
+  win.forEach(pt=>{ if(pt[1]<lo)lo=pt[1]; if(pt[1]>hi)hi=pt[1]; });
+  const rx={pre,lo,hi,last,drop:lo-pre,pop:hi-pre,net:last-pre,
+            approx:(et-preT)>40*60*1000, win:REACT_WIN_MIN, frozen:(Date.now()>winEnd)};
+  // window has fully closed -> freeze it permanently for this device
+  if(rx.frozen){ try{ localStorage.setItem(rxnKey(whenISO), JSON.stringify(rx)); }catch(_){} }
+  return rx;
 }
 function fnum(s){ if(!s) return null; const t=(''+s).replace('%','').replace(',',''); const v=parseFloat(t); return isNaN(v)?null:v; }
 function mmyy(d){ const p=(d||'').split('-'); return p.length>=2? p[1]+'/'+p[0].slice(2):d; }
@@ -1037,7 +1051,8 @@ function drawReactionChart(e){
   const c=$('evtChart'), x=c.getContext('2d'); const W=c.width=c.clientWidth||1000, H=c.height;
   x.clearRect(0,0,W,H);
   const et=Date.parse(e.when);
-  const from=et-30*60000, to=Math.min(Date.now(), et+3*3600000);
+  // focus on the reaction window (the news's real impact), not hours of later drift
+  const from=et-15*60000, to=Math.min(Date.now(), et+(REACT_WIN_MIN+15)*60000);
   const pts=_priceSeries.filter(p=>p[0]>=from&&p[0]<=to);
   if(pts.length<2){ x.fillStyle='#9aa7b4'; x.font='13px sans-serif';
     x.fillText(t('react_nodata'),12,28); return; }
