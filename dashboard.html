@@ -715,7 +715,7 @@ const I18N = {
     sc_dir_calls:"Directional calls:", sc_hits:"hits", sc_misses:"misses", sc_flatw:"flat",
     sc_no_calls:"No graded calls for {s} yet — the next high-impact release is scored ~2h after it prints.",
     sc_none_x:"no graded events for {s} yet", pct_hit:"% hit",
-    detail_title:"Event detail", evt_hist_hdr:"📊 Past reactions · same event (isolated 30-min window, permanent memory)", evt_hist_none:"No past record of this event yet — this one will be saved for next time.", eh_date:"Date", eh_actual:"Actual", eh_react:"Gold reaction (30m)", evt_reaction_title:"{t} · reaction around release",
+    detail_title:"Event detail", evt_hist_hdr:"📊 Past reactions · same event (isolated 15-min window, permanent memory)", evt_hist_none:"No past record of this event yet — this one will be saved for next time.", eh_date:"Date", eh_actual:"Actual", eh_react:"Gold reaction (15m)", evt_reaction_title:"{t} · reaction around release",
     react_low:"low", react_high:"high", react_net:"net", react_dashed:"(dashed = release)",
     react_tracking:"tracking — building the price window around this release…",
     react_nodata:"not enough price data around this event yet — building…", release:"release",
@@ -785,7 +785,7 @@ const I18N = {
     sc_dir_calls:"پیش‌بینیِ جهت:", sc_hits:"درست", sc_misses:"غلط", sc_flatw:"خنثی",
     sc_no_calls:"هنوز پیش‌بینیِ نمره‌داری برای {s} نیست — رویدادِ مهمِ بعدی حدودِ ۲ ساعت پس از انتشار نمره می‌گیرد.",
     sc_none_x:"هنوز رویدادِ نمره‌داری برای {s} نیست", pct_hit:"٪ درست",
-    detail_title:"جزئیاتِ رویداد", evt_hist_hdr:"📊 واکنش‌های گذشته · همین خبر (پنجرهٔ ایزولهٔ ۳۰دقیقه، حافظهٔ دائمی)", evt_hist_none:"هنوز سابقه‌ای از این خبر نیست — همین یکی برای دفعهٔ بعد ذخیره می‌شود.", eh_date:"تاریخ", eh_actual:"واقعی", eh_react:"واکنشِ طلا (۳۰د)", evt_reaction_title:"{t} · واکنش پیرامونِ انتشار",
+    detail_title:"جزئیاتِ رویداد", evt_hist_hdr:"📊 واکنش‌های گذشته · همین خبر (پنجرهٔ ایزولهٔ ۱۵دقیقه، حافظهٔ دائمی)", evt_hist_none:"هنوز سابقه‌ای از این خبر نیست — همین یکی برای دفعهٔ بعد ذخیره می‌شود.", eh_date:"تاریخ", eh_actual:"واقعی", eh_react:"واکنشِ طلا (۱۵د)", evt_reaction_title:"{t} · واکنش پیرامونِ انتشار",
     react_low:"کف", react_high:"سقف", react_net:"خالص", react_dashed:"(خط‌چین = لحظهٔ انتشار)",
     react_tracking:"در حال رصد — ساختِ پنجرهٔ قیمتی پیرامونِ این انتشار…",
     react_nodata:"هنوز دادهٔ قیمتیِ کافی پیرامونِ این رویداد نیست — در حال ساخت…", release:"انتشار",
@@ -855,7 +855,7 @@ const I18N = {
     sc_dir_calls:"Richtungsprognosen:", sc_hits:"Treffer", sc_misses:"Fehler", sc_flatw:"flach",
     sc_no_calls:"Noch keine bewerteten Prognosen für {s} — die nächste wichtige Veröffentlichung wird ~2h danach bewertet.",
     sc_none_x:"noch keine bewerteten Ereignisse für {s}", pct_hit:"% Treffer",
-    detail_title:"Ereignis-Detail", evt_hist_hdr:"📊 Frühere Reaktionen · gleiches Ereignis (isoliertes 30-Min-Fenster, dauerhaft)", evt_hist_none:"Noch kein früherer Datensatz — dieser wird für das nächste Mal gespeichert.", eh_date:"Datum", eh_actual:"Ist", eh_react:"Gold-Reaktion (30m)", evt_reaction_title:"{t} · Reaktion rund um die Veröffentlichung",
+    detail_title:"Ereignis-Detail", evt_hist_hdr:"📊 Frühere Reaktionen · gleiches Ereignis (isoliertes 15-Min-Fenster, dauerhaft)", evt_hist_none:"Noch kein früherer Datensatz — dieser wird für das nächste Mal gespeichert.", eh_date:"Datum", eh_actual:"Ist", eh_react:"Gold-Reaktion (15m)", evt_reaction_title:"{t} · Reaktion rund um die Veröffentlichung",
     react_low:"Tief", react_high:"Hoch", react_net:"Netto", react_dashed:"(gestrichelt = Veröffentlichung)",
     react_tracking:"verfolge — baue das Preisfenster rund um diese Veröffentlichung…",
     react_nodata:"noch nicht genug Preisdaten rund um dieses Ereignis — wird aufgebaut…", release:"Veröffentl.",
@@ -1021,9 +1021,9 @@ async function loadSeries(){
 // hours later (that's traders, and it gets contaminated by the NEXT event). So we
 // measure ONLY an isolated window right after release, then FREEZE it (cached in
 // localStorage) so a past event's reaction never drifts and never disappears.
-const REACT_WIN_MIN = 30;
+const REACT_WIN_MIN = 15;
 function reactionFor(whenISO){
-  // Isolated window [release, release+30min]: the news's own immediate impact, not
+  // Isolated window [release, release+15min]: the news's own immediate impact, not
   // the later drift (traders) and not contaminated by the NEXT event. On the site
   // this is transient; the PERMANENT record lives server-side (/event_history).
   const et=Date.parse(whenISO), winEnd=et+REACT_WIN_MIN*60000, s=_priceSeries;
@@ -1069,7 +1069,7 @@ function drawReactionChart(e){
 }
 
 // Permanent LEARNING MEMORY (server-side): past occurrences of THIS event type and
-// how the market really reacted (isolated 30-min window), so the next release's read
+// how the market really reacted (isolated 15-min window), so the next release's read
 // builds on "last time fc/prev -> reaction was X".
 async function loadEventHistory(title){
   const box=$('evtHist'); if(!box) return;

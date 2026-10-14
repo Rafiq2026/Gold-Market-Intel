@@ -19,6 +19,7 @@ import news_feed as NF
 import positioning_feed as PF
 import events_feed as EF
 import quotes_feed as QF
+import scorecard as SC
 import crypto_flow as CFL
 import translate as TR
 
@@ -169,6 +170,24 @@ def build(symbol="XAUUSD", lang="en"):
         parts.append(s)
         if e.get("note"):
             parts.append(e["note"])
+        # LEARNING MEMORY: how this same event moved the market on its past releases
+        # (isolated immediate window) so the read is grounded in real history.
+        try:
+            hist = [h for h in SC.FEED.history_for(symbol, e.get("title", ""), 4).get("records", [])
+                    if (h.get("net30") is not None or h.get("net") is not None)]
+        except Exception:
+            hist = []
+        if hist:
+            h0 = hist[0]
+            rv = h0.get("net30") if h0.get("net30") is not None else h0.get("net")
+            rv = rv or 0.0
+            moved = "barely moved" if abs(rv) < 0.5 else \
+                    ("fell %.2f" % abs(rv) if rv < 0 else "rose %.2f" % abs(rv))
+            extra = " across %d past releases on record" % len(hist) if len(hist) > 1 else ""
+            parts.append(
+                "History%s: last time (consensus %s vs previous %s) %s %s in the first ~15 min — "
+                "the release's own immediate impact; the bigger move afterward was trader flow, not the print itself."
+                % (extra, h0.get("forecast") or "—", h0.get("previous") or "—", symbol, moved))
         if eff in ("up", "down"):
             parts.append("On balance the setup points %s for %s if it prints as expected; the sharper move is on a surprise."
                          % ("higher" if eff == "up" else "lower", symbol))

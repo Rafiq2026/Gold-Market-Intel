@@ -29,7 +29,7 @@ SCORE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scorecard
 GRADE_AFTER_H = 2.0
 GRADE_BEFORE_H = 20.0
 WINDOW_MIN = 120
-WINDOW_SHORT_MIN = 30      # a news release's REAL impact is the first ~30 min, isolated from the next event
+WINDOW_SHORT_MIN = 15      # a news release's REAL impact is the first ~15 min; after that it's traders/whales, not the news
 FLAT_PCT = 0.0005          # |net|/pre below this = flat / noise (works across instruments)
 LOOP_SEC = 600
 TRACK = ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "USDCHF", "XAGUSD"]
