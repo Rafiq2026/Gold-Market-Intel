@@ -29,6 +29,7 @@ SCORE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scorecard
 GRADE_AFTER_H = 2.0
 GRADE_BEFORE_H = 20.0
 WINDOW_MIN = 120
+WINDOW_SHORT_MIN = 30      # a news release's REAL impact is the first ~30 min, isolated from the next event
 FLAT_PCT = 0.0005          # |net|/pre below this = flat / noise (works across instruments)
 LOOP_SEC = 600
 TRACK = ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "USDCHF", "XAGUSD"]
@@ -68,6 +69,26 @@ def _reaction(series, when_iso):
         return None
     last = aft[-1][1]
     return {"pre": base, "net": last - base}
+
+
+def _reaction_win(series, when_iso, win_min):
+    """Isolated reaction in the first `win_min` minutes after release: net (settle at
+    window end), pop (max up) and drop (max down) vs the pre-release baseline. This is
+    the news's own immediate impact - not the later drift driven by traders / the next
+    event."""
+    try:
+        et = _ms(when_iso)
+    except Exception:
+        return None
+    base = None
+    for tm, pr in series:
+        if tm <= et - 5 * 60000:
+            base = pr
+    win = [pr for tm, pr in series if et <= tm <= et + win_min * 60000]
+    if base is None or not win:
+        return None
+    return {"pre": base, "net": win[-1] - base,
+            "pop": max(win) - base, "drop": min(win) - base}
 
 
 class Scorecard:
@@ -144,12 +165,19 @@ class Scorecard:
                 else:
                     result = "miss"
                 eid = "%s|%s|%s" % (symbol, e.get("title", ""), e.get("when", ""))
+                r30 = _reaction_win(series, e.get("when", ""), WINDOW_SHORT_MIN)
                 with self._lock:
                     self._rec[eid] = {
                         "symbol": symbol, "title": e.get("title", ""), "currency": e.get("currency", ""),
                         "when": e.get("when", ""), "predicted": d, "net": round(net, 5),
                         "forecast": e.get("forecast", ""), "previous": e.get("previous", ""),
+                        "actual": e.get("actual", ""),
                         "net_pct": round(pct * 100, 2), "result": result,
+                        # isolated immediate-impact reaction (learning memory for the next release)
+                        "net30": round(r30["net"], 5) if r30 else None,
+                        "pop30": round(r30["pop"], 5) if r30 else None,
+                        "drop30": round(r30["drop"], 5) if r30 else None,
+                        "win_min": WINDOW_SHORT_MIN,
                         "graded_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                     }
                     changed = True
@@ -169,6 +197,24 @@ class Scorecard:
         return {"ok": True, "symbol": symbol, "count": len(recs),
                 "directional": len(graded), "hits": hits, "misses": misses,
                 "flat": flat, "hit_rate": rate, "records": recs[:40]}
+
+    def history_for(self, symbol="XAUUSD", title="", limit=12):
+        """Past occurrences of ONE event type (e.g. 'Core CPI m/m') for a symbol, newest
+        first - the learning memory the next release's analysis builds on."""
+        symbol = (symbol or "XAUUSD").upper()
+        title = (title or "").strip()
+        with self._lock:
+            recs = [r for r in self._rec.values()
+                    if r.get("symbol") == symbol and r.get("title", "") == title]
+        recs.sort(key=lambda r: r.get("when", ""), reverse=True)
+        out = []
+        for r in recs[:limit]:
+            out.append({"when": r.get("when", ""), "forecast": r.get("forecast", ""),
+                        "previous": r.get("previous", ""), "actual": r.get("actual", ""),
+                        "predicted": r.get("predicted", ""), "result": r.get("result", ""),
+                        "net30": r.get("net30"), "pop30": r.get("pop30"), "drop30": r.get("drop30"),
+                        "net": r.get("net"), "win_min": r.get("win_min", WINDOW_SHORT_MIN)})
+        return {"ok": True, "symbol": symbol, "title": title, "count": len(recs), "records": out}
 
     def snapshot(self):
         return self.snapshot_for("XAUUSD")

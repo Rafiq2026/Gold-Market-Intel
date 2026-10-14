@@ -287,6 +287,10 @@ class Handler(BaseHTTPRequestHandler):
             from urllib.parse import urlparse, parse_qs
             sym = (parse_qs(urlparse(self.path).query).get("symbol", ["XAUUSD"])[0])
             self._send(200, SC.FEED.snapshot_for(sym))
+        elif self.path.startswith("/event_history"):
+            from urllib.parse import urlparse, parse_qs
+            qp = parse_qs(urlparse(self.path).query)
+            self._send(200, SC.FEED.history_for(qp.get("symbol", ["XAUUSD"])[0], qp.get("title", [""])[0]))
         elif self.path.startswith("/analysis"):
             from urllib.parse import urlparse, parse_qs
             qp = parse_qs(urlparse(self.path).query)

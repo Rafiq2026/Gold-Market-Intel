@@ -92,6 +92,10 @@
   .geoitem .gi-dot{flex:0 0 auto;font-weight:700;font-size:11px}
   .geoitem .gi-txt{color:var(--txt);word-break:break-word}
   .geoitem .gi-cat{color:var(--dim);font-size:10px;white-space:nowrap}
+  .evhist{width:100%;border-collapse:collapse;margin-top:4px;font-size:12px}
+  .evhist th{text-align:left;color:var(--dim);font-weight:600;padding:4px 8px;border-bottom:1px solid var(--line)}
+  .evhist td{padding:4px 8px;border-bottom:1px solid var(--line);color:var(--txt)}
+  .evhist .sub{font-size:10px}
   /* --- Economic events feed --- */
   .evfeed{display:flex;flex-direction:column;gap:4px;margin:2px 0 8px;max-height:180px;overflow-y:auto}
   .evitem{display:flex;gap:7px;align-items:baseline;font-size:12px;line-height:1.35;
@@ -615,6 +619,7 @@
       <canvas id="evtChart" width="1000" height="200"></canvas>
       <div class="legend" id="detailLegend"></div>
       <div id="detailNote" style="color:var(--dim);font-size:12px;margin-top:8px"></div>
+      <div id="evtHist"></div>
     </div>
 
     <!-- Ask Gold Brain AI (live market chat) -->
@@ -710,7 +715,7 @@ const I18N = {
     sc_dir_calls:"Directional calls:", sc_hits:"hits", sc_misses:"misses", sc_flatw:"flat",
     sc_no_calls:"No graded calls for {s} yet — the next high-impact release is scored ~2h after it prints.",
     sc_none_x:"no graded events for {s} yet", pct_hit:"% hit",
-    detail_title:"Event detail", evt_reaction_title:"{t} · reaction around release",
+    detail_title:"Event detail", evt_hist_hdr:"📊 Past reactions · same event (isolated 30-min window, permanent memory)", evt_hist_none:"No past record of this event yet — this one will be saved for next time.", eh_date:"Date", eh_actual:"Actual", eh_react:"Gold reaction (30m)", evt_reaction_title:"{t} · reaction around release",
     react_low:"low", react_high:"high", react_net:"net", react_dashed:"(dashed = release)",
     react_tracking:"tracking — building the price window around this release…",
     react_nodata:"not enough price data around this event yet — building…", release:"release",
@@ -780,7 +785,7 @@ const I18N = {
     sc_dir_calls:"پیش‌بینیِ جهت:", sc_hits:"درست", sc_misses:"غلط", sc_flatw:"خنثی",
     sc_no_calls:"هنوز پیش‌بینیِ نمره‌داری برای {s} نیست — رویدادِ مهمِ بعدی حدودِ ۲ ساعت پس از انتشار نمره می‌گیرد.",
     sc_none_x:"هنوز رویدادِ نمره‌داری برای {s} نیست", pct_hit:"٪ درست",
-    detail_title:"جزئیاتِ رویداد", evt_reaction_title:"{t} · واکنش پیرامونِ انتشار",
+    detail_title:"جزئیاتِ رویداد", evt_hist_hdr:"📊 واکنش‌های گذشته · همین خبر (پنجرهٔ ایزولهٔ ۳۰دقیقه، حافظهٔ دائمی)", evt_hist_none:"هنوز سابقه‌ای از این خبر نیست — همین یکی برای دفعهٔ بعد ذخیره می‌شود.", eh_date:"تاریخ", eh_actual:"واقعی", eh_react:"واکنشِ طلا (۳۰د)", evt_reaction_title:"{t} · واکنش پیرامونِ انتشار",
     react_low:"کف", react_high:"سقف", react_net:"خالص", react_dashed:"(خط‌چین = لحظهٔ انتشار)",
     react_tracking:"در حال رصد — ساختِ پنجرهٔ قیمتی پیرامونِ این انتشار…",
     react_nodata:"هنوز دادهٔ قیمتیِ کافی پیرامونِ این رویداد نیست — در حال ساخت…", release:"انتشار",
@@ -850,7 +855,7 @@ const I18N = {
     sc_dir_calls:"Richtungsprognosen:", sc_hits:"Treffer", sc_misses:"Fehler", sc_flatw:"flach",
     sc_no_calls:"Noch keine bewerteten Prognosen für {s} — die nächste wichtige Veröffentlichung wird ~2h danach bewertet.",
     sc_none_x:"noch keine bewerteten Ereignisse für {s}", pct_hit:"% Treffer",
-    detail_title:"Ereignis-Detail", evt_reaction_title:"{t} · Reaktion rund um die Veröffentlichung",
+    detail_title:"Ereignis-Detail", evt_hist_hdr:"📊 Frühere Reaktionen · gleiches Ereignis (isoliertes 30-Min-Fenster, dauerhaft)", evt_hist_none:"Noch kein früherer Datensatz — dieser wird für das nächste Mal gespeichert.", eh_date:"Datum", eh_actual:"Ist", eh_react:"Gold-Reaktion (30m)", evt_reaction_title:"{t} · Reaktion rund um die Veröffentlichung",
     react_low:"Tief", react_high:"Hoch", react_net:"Netto", react_dashed:"(gestrichelt = Veröffentlichung)",
     react_tracking:"verfolge — baue das Preisfenster rund um diese Veröffentlichung…",
     react_nodata:"noch nicht genug Preisdaten rund um dieses Ereignis — wird aufgebaut…", release:"Veröffentl.",
@@ -1017,32 +1022,22 @@ async function loadSeries(){
 // measure ONLY an isolated window right after release, then FREEZE it (cached in
 // localStorage) so a past event's reaction never drifts and never disappears.
 const REACT_WIN_MIN = 30;
-function rxnKey(whenISO){ return 'gmi_rxn_'+_symbol+'_'+whenISO; }
-function rxnCached(whenISO){ try{ const c=localStorage.getItem(rxnKey(whenISO)); return c?JSON.parse(c):null; }catch(_){ return null; } }
 function reactionFor(whenISO){
+  // Isolated window [release, release+30min]: the news's own immediate impact, not
+  // the later drift (traders) and not contaminated by the NEXT event. On the site
+  // this is transient; the PERMANENT record lives server-side (/event_history).
   const et=Date.parse(whenISO), winEnd=et+REACT_WIN_MIN*60000, s=_priceSeries;
-  const cached=rxnCached(whenISO);         // frozen permanent record (if any)
-  if(cached) return cached;                // once frozen, always use it (no drift, never lost)
   if(!s || s.length<2) return null;
-  // Clean pre-event baseline: price ~5 min BEFORE release (before the move starts).
   const baseT=et-5*60000;
   let pre=null, preT=null;
   for(const pt of s){ if(pt[0]<=baseT){ pre=pt[1]; preT=pt[0]; } else break; }
-  if(pre==null){ // event earlier than our data: use first available point
-    if(s[0][0]>et+30*60000) return null;
-    pre=s[0][1]; preT=s[0][0];
-  }
-  // ONLY the isolated window [release, release+WIN]: not contaminated by later
-  // events, and it stops changing once the window closes.
+  if(pre==null){ if(s[0][0]>et+30*60000) return null; pre=s[0][1]; preT=s[0][0]; }
   const win=s.filter(pt=>pt[0]>=et && pt[0]<=winEnd);
   if(!win.length) return null;
   let lo=1e12, hi=-1e12; const last=win[win.length-1][1];
   win.forEach(pt=>{ if(pt[1]<lo)lo=pt[1]; if(pt[1]>hi)hi=pt[1]; });
-  const rx={pre,lo,hi,last,drop:lo-pre,pop:hi-pre,net:last-pre,
-            approx:(et-preT)>40*60*1000, win:REACT_WIN_MIN, frozen:(Date.now()>winEnd)};
-  // window has fully closed -> freeze it permanently for this device
-  if(rx.frozen){ try{ localStorage.setItem(rxnKey(whenISO), JSON.stringify(rx)); }catch(_){} }
-  return rx;
+  return {pre,lo,hi,last,drop:lo-pre,pop:hi-pre,net:last-pre,
+          approx:(et-preT)>40*60*1000, win:REACT_WIN_MIN};
 }
 function fnum(s){ if(!s) return null; const t=(''+s).replace('%','').replace(',',''); const v=parseFloat(t); return isNaN(v)?null:v; }
 function mmyy(d){ const p=(d||'').split('-'); return p.length>=2? p[1]+'/'+p[0].slice(2):d; }
@@ -1073,9 +1068,33 @@ function drawReactionChart(e){
   c.__pts=pts.map(p=>({px:xp(p[0]),text:'<b>'+p[1].toFixed(dd)+'</b> · '+new Date(p[0]).toLocaleString([], {hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'})}));
 }
 
+// Permanent LEARNING MEMORY (server-side): past occurrences of THIS event type and
+// how the market really reacted (isolated 30-min window), so the next release's read
+// builds on "last time fc/prev -> reaction was X".
+async function loadEventHistory(title){
+  const box=$('evtHist'); if(!box) return;
+  box.innerHTML='';
+  if(!title) return;
+  try{
+    const d=await (await fetch('/event_history?symbol='+encodeURIComponent(_symbol)+'&title='+encodeURIComponent(title),{cache:'no-store'})).json();
+    const recs=(d.records||[]); const dd=decFor(_symbol);
+    if(!recs.length){ box.innerHTML='<div class="sub" style="margin-top:12px">'+t('evt_hist_none')+'</div>'; return; }
+    const rows=recs.map(r=>{
+      const n=(r.net30!=null?r.net30:r.net);
+      const react = n!=null ? ('<span class="'+(n>=0?'up':'down')+'">'+fmtSigned((+n).toFixed(dd))+'</span>'
+                    +((r.pop30!=null&&r.drop30!=null)?' <span class="sub">▲'+fmtSigned((+r.pop30).toFixed(dd))+' ▼'+fmtSigned((+r.drop30).toFixed(dd))+'</span>':'')) : '—';
+      return '<tr><td>'+(r.when||'').slice(0,10)+'</td><td>'+(r.forecast||'—')+'</td><td>'+(r.previous||'—')+'</td><td>'+(r.actual||'—')+'</td><td>'+react+'</td></tr>';
+    }).join('');
+    box.innerHTML='<div class="sub" style="margin:12px 0 6px;color:var(--cyan)">'+t('evt_hist_hdr')+'</div>'+
+      '<table class="evhist"><thead><tr><th>'+t('eh_date')+'</th><th>'+t('d_forecast')+'</th><th>'+t('d_previous')+'</th><th>'+t('eh_actual')+'</th><th>'+t('eh_react')+'</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  }catch(_){ box.innerHTML=''; }
+}
+
 function showDetail(e, noScroll){
   _detailEvt=e;
   $('detailCard').hidden=false;
+  loadEventHistory(e.title);              // learning memory for this event type
+  $('evtChart').style.display='block';
   $('evtChart').style.display='block';   // reset (the no-history branch hides it)
   // PASSED event -> show the real GOLD REACTION line around the release.
   if(e.hours_until<=0.15 && _priceSeries.length){

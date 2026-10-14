@@ -252,6 +252,9 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path.startswith("/scorecard"):
             sym = (parse_qs(urlparse(self.path).query).get("symbol", ["XAUUSD"])[0])
             self._send(200, SC.FEED.snapshot_for(sym))
+        elif self.path.startswith("/event_history"):
+            qp = parse_qs(urlparse(self.path).query)
+            self._send(200, SC.FEED.history_for(qp.get("symbol", ["XAUUSD"])[0], qp.get("title", [""])[0]))
         elif self.path.startswith("/analysis"):
             qp = parse_qs(urlparse(self.path).query)
             sym = qp.get("symbol", ["XAUUSD"])[0]
