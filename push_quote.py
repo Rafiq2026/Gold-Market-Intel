@@ -140,7 +140,7 @@ def main():
     if not CLOUD_URL:
         print("Set GBAI_CLOUD_URL (your Render URL) or pass it as arg 1."); return
     print("[push] MT5 %s -> %s  every %ss" % (MT5_QUOTE, CLOUD_URL, INTERVAL))
-    last_cal = 0; last_bars = 0; last_news = 0
+    last_cal = 0; last_bars = 0; last_news = 0; last_learn = 0
     while True:
         try:
             q = read_quote()               # push every cycle so price AND flow stay fresh
@@ -158,6 +158,14 @@ def main():
             push_bars(); last_bars = time.time()
         if time.time() - last_news > 120:
             push_news(); last_news = time.time()
+        if time.time() - last_learn > 1800:        # GoldHunter learns from its own trades every 30 min
+            try:
+                import learn_hunter
+                import importlib; importlib.reload(learn_hunter)
+                learn_hunter.main()
+            except Exception as e:
+                print("[learn] err:", repr(e)[:80])
+            last_learn = time.time()
         time.sleep(INTERVAL)
 
 
