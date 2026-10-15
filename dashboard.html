@@ -1121,7 +1121,7 @@ function showDetail(e, noScroll){
   $('evtChart').style.display='block';
   $('evtChart').style.display='block';   // reset (the no-history branch hides it)
   // PASSED event -> show the real GOLD REACTION line around the release.
-  if(e.hours_until<=0.15 && _priceSeries.length){
+  if(e.hours_until<0 && _priceSeries.length){
     $('detailTitle').textContent=t('evt_reaction_title',{t:e.title});
     drawReactionChart(e);
     const rx=reactionFor(e.when), dd=decFor(_symbol);
@@ -1340,7 +1340,7 @@ async function refresh(){
         const inLine=e.forecast&&e.previous&&(''+e.forecast===''+e.previous);
         const richLbl=e.impact_label||(inLine?t('inline_watch'):t('surprise_driven'));
         let expTxt=pv.rich?richLbl:pv.label, expCls=dc;
-        if(e.hours_until<=0.15){ const rx=reactionFor(e.when);
+        if(e.hours_until<0){ const rx=reactionFor(e.when);
           if(rx){ const dd=decFor(_symbol);
             // the news's real impact = the violent spike (biggest excursion), not the settle
             const peak=Math.abs(rx.drop)>=Math.abs(rx.pop)?rx.drop:rx.pop;
