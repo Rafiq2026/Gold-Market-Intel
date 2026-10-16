@@ -1342,9 +1342,13 @@ async function refresh(){
         let expTxt=pv.rich?richLbl:pv.label, expCls=dc;
         if(e.hours_until<0){ const rx=reactionFor(e.when);
           if(rx){ const dd=decFor(_symbol);
-            // the news's real impact = the violent spike (biggest excursion), not the settle
-            const peak=Math.abs(rx.drop)>=Math.abs(rx.pop)?rx.drop:rx.pop;
-            expCls=peak>=0?'up':'down'; expTxt=t('reacted_now',{v:fmtSigned(peak.toFixed(dd))}); } }
+            // NET = where gold settled (correct direction); append the spike range when the
+            // whipsaw was much bigger than the settle, so a dip-then-rally isn't shown as a drop.
+            const net=rx.net, peakMag=Math.max(Math.abs(rx.drop),Math.abs(rx.pop));
+            expCls=net>=0?'up':'down';
+            let v=fmtSigned(net.toFixed(dd));
+            if(peakMag>Math.abs(net)+1) v+=' · ⇅'+peakMag.toFixed(dd);
+            expTxt=t('reacted_now',{v:v}); } }
         const it=document.createElement('div');
         it.className='evtitem';
         it.dataset.idx=i;
