@@ -598,7 +598,6 @@
         <div id="evtWheel" class="evtwheel"><div class="neu" style="padding:20px" data-i18n="evt_loading">loading…</div></div>
         <button id="evtDial" class="evtdial" data-i18n-title="evt_dial_title" title="Hover to rotate the events">⟳</button>
       </div>
-      <div id="evtReleased" style="margin-top:10px"></div>
       <span id="evtColHdr" style="display:none"></span>
       <div class="disc" data-i18n="disc_events">Hover the ⟳ dial to rotate · click an event for its full history &amp; expected-reaction evidence. Expectation-based, sharpened with REAL FRED actuals.</div>
     </div>
@@ -1327,31 +1326,8 @@ async function refresh(){
     $('evtHdr').textContent=t('evt_hdr_x',{s:_symbol});
     $('evtColHdr').textContent='Expected → '+_symbol+' / Reacted';
     const wheel=$('evtWheel'); wheel.innerHTML='';
-    // Released figures — actuals that have printed (whole window, not just the 12h wheel)
-    (function(){
-      const box=$('evtReleased'); if(!box) return;
-      const rel=ev.filter(e=>e.result&&e.result.released).sort((a,b)=>a.hours_until-b.hours_until);
-      if(!rel.length){ box.innerHTML=''; return; }
-      const GA={up:'Au↑',down:'Au↓',muted:'Au·'};
-      let h='<div style="font-size:13px;font-weight:700;margin:2px 0 8px;color:var(--gold,#f2c14e)">'+t('released_hdr')+'</div>'
-           +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px">';
-      rel.slice(-8).reverse().forEach(e=>{
-        const r=e.result, sk=r.vs_forecast;
-        const skTxt=sk==='beat'?'▲':sk==='miss'?'▼':sk==='inline'?'=':'';
-        const skCls=sk==='beat'?'up':sk==='miss'?'down':'neu';
-        const g=r.gold, gTxt=GA[g]||'', gCls=g==='up'?'up':g==='down'?'down':'neu';
-        const sp=(r.surprise_pct!=null)?((r.surprise_pct>0?'+':'')+r.surprise_pct+'%'):'';
-        h+='<div style="border:1px solid var(--line,#243049);border-radius:12px;padding:10px 12px">'
-          +'<div style="font-size:12px;color:var(--mut,#8aa0c0);margin-bottom:4px">'+e.currency+' · '+(e.title||'')+'</div>'
-          +'<div style="font-variant-numeric:tabular-nums"><b>'+t('eh_actual')+' '+r.actual+'</b>'
-          +(skTxt?' <span class="'+skCls+'">'+skTxt+' '+(e.forecast||'—')+(sp?' ('+sp+')':'')+'</span>':'')
-          +(gTxt?' · <span class="'+gCls+'">'+gTxt+'</span>':'')+'</div></div>';
-      });
-      h+='</div>';
-      box.innerHTML=h;
-    })();
     const _dial=$('evtDial'), _wrap=document.querySelector('.evtwheel-wrap');
-    const up=ev.filter(e=>e.hours_until>=-12).slice(0,16);   // keep recent PASSED events too
+    const up=ev.filter(e=>e.hours_until>=-12 || (e.result&&e.result.released)).slice(0,20); // recent + any released
     if(!up.length){
       wheel.innerHTML='<div class="neu" style="padding:22px">'+t('evt_none')+'</div>';
       window._evtCount=0;
@@ -1385,8 +1361,9 @@ async function refresh(){
           const gld=e.result.gold, gTxt=gld==='up'?'Au↑':gld==='down'?'Au↓':gld==='muted'?'Au·':'';
           const gCls=gld==='up'?'up':gld==='down'?'down':'neu';
           const sp=(e.result.surprise_pct!=null)?(' '+(e.result.surprise_pct>0?'+':'')+e.result.surprise_pct+'%'):'';
-          act='<div class="et-meta"><b style="color:var(--txt)">'+t('eh_actual')+' '+e.result.actual+'</b>'+
-              (skTxt?' <span class="'+skCls+'">'+skTxt+' '+t('d_forecast')+'</span>'+sp:'')+
+          act='<div class="et-meta" style="background:rgba(242,193,78,.08);border-radius:8px;padding:4px 8px;margin-top:4px">'+
+              '<b style="color:var(--gold,#f2c14e)">'+t('eh_actual')+' '+e.result.actual+'</b>'+
+              (skTxt?' <span class="'+skCls+'">'+skTxt+' '+t('d_forecast')+' '+(e.forecast||'—')+'</span>'+sp:'')+
               (gTxt?' · <span class="'+gCls+'">'+gTxt+'</span>':'')+'</div>';
         }
         const it=document.createElement('div');
