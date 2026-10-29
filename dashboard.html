@@ -598,6 +598,7 @@
         <div id="evtWheel" class="evtwheel"><div class="neu" style="padding:20px" data-i18n="evt_loading">loading…</div></div>
         <button id="evtDial" class="evtdial" data-i18n-title="evt_dial_title" title="Hover to rotate the events">⟳</button>
       </div>
+      <div id="evtReleased" style="margin-top:10px"></div>
       <span id="evtColHdr" style="display:none"></span>
       <div class="disc" data-i18n="disc_events">Hover the ⟳ dial to rotate · click an event for its full history &amp; expected-reaction evidence. Expectation-based, sharpened with REAL FRED actuals.</div>
     </div>
@@ -710,6 +711,7 @@ const I18N = {
     sc_hdr:"Prediction Scorecard", sc_hdr_x:"Prediction Scorecard · {s} ", sc_building:"building record…",
     th_when:"When", th_cur:"Cur", th_event:"Event", th_fcst:"Fcst / Prev", th_predicted:"Predicted",
     th_net:"Net (2h)", th_net_x:"{s} net (2h)", th_result:"Result", sc_none:"no graded events yet",
+    released_hdr:"📊 Released figures (actual vs forecast)",
     disc_sc:"Directional calls only, graded vs the selected symbol's real isolated 2-h reaction. “flat” = move under 0.05% (noise). Each event is graded once, ~2h after release, then frozen — a permanent track record.",
     sc_hit:"✓ hit", sc_miss:"✗ miss", sc_flat:"– flat", pred_bear:"↓ bearish", pred_bull:"↑ bullish",
     sc_dir_calls:"Directional calls:", sc_hits:"hits", sc_misses:"misses", sc_flatw:"flat",
@@ -780,6 +782,7 @@ const I18N = {
     sc_hdr:"کارنامهٔ پیش‌بینی", sc_hdr_x:"کارنامهٔ پیش‌بینی · {s} ", sc_building:"در حال ساختِ کارنامه…",
     th_when:"زمان", th_cur:"ارز", th_event:"رویداد", th_fcst:"پیش‌بینی / قبلی", th_predicted:"پیش‌بینی‌شده",
     th_net:"خالص (۲س)", th_net_x:"خالصِ {s} (۲س)", th_result:"نتیجه", sc_none:"هنوز رویدادِ نمره‌داده‌شده‌ای نیست",
+    released_hdr:"📊 رقم‌های منتشرشده (واقعی در برابر پیش‌بینی)",
     disc_sc:"فقط پیش‌بینیِ جهت، نمره‌داده در برابرِ واکنشِ واقعیِ ۲ساعتهٔ نمادِ انتخابی. «flat» = حرکتِ کمتر از ۰٫۰۵٪ (نویز). هر رویداد یک بار، حدودِ ۲ ساعت پس از انتشار نمره می‌گیرد و بعد ثابت می‌شود — کارنامه‌ای دائمی.",
     sc_hit:"✓ درست", sc_miss:"✗ غلط", sc_flat:"– خنثی", pred_bear:"↓ نزولی", pred_bull:"↑ صعودی",
     sc_dir_calls:"پیش‌بینیِ جهت:", sc_hits:"درست", sc_misses:"غلط", sc_flatw:"خنثی",
@@ -850,6 +853,7 @@ const I18N = {
     sc_hdr:"Prognose-Bilanz", sc_hdr_x:"Prognose-Bilanz · {s} ", sc_building:"Bilanz wird aufgebaut…",
     th_when:"Wann", th_cur:"Währ.", th_event:"Ereignis", th_fcst:"Prog. / Vorher", th_predicted:"Prognose",
     th_net:"Netto (2h)", th_net_x:"{s} Netto (2h)", th_result:"Ergebnis", sc_none:"noch keine bewerteten Ereignisse",
+    released_hdr:"📊 Veröffentlichte Werte (Ist vs. Prognose)",
     disc_sc:"Nur Richtungsprognosen, bewertet an der realen isolierten 2-h-Reaktion des Symbols. „flat“ = Bewegung unter 0,05% (Rauschen). Jedes Ereignis wird einmal, ~2h nach Veröffentlichung, bewertet und dann fixiert — eine dauerhafte Bilanz.",
     sc_hit:"✓ Treffer", sc_miss:"✗ Fehler", sc_flat:"– flach", pred_bear:"↓ bärisch", pred_bull:"↑ bullisch",
     sc_dir_calls:"Richtungsprognosen:", sc_hits:"Treffer", sc_misses:"Fehler", sc_flatw:"flach",
@@ -1323,6 +1327,29 @@ async function refresh(){
     $('evtHdr').textContent=t('evt_hdr_x',{s:_symbol});
     $('evtColHdr').textContent='Expected → '+_symbol+' / Reacted';
     const wheel=$('evtWheel'); wheel.innerHTML='';
+    // Released figures — actuals that have printed (whole window, not just the 12h wheel)
+    (function(){
+      const box=$('evtReleased'); if(!box) return;
+      const rel=ev.filter(e=>e.result&&e.result.released).sort((a,b)=>a.hours_until-b.hours_until);
+      if(!rel.length){ box.innerHTML=''; return; }
+      const GA={up:'Au↑',down:'Au↓',muted:'Au·'};
+      let h='<div style="font-size:13px;font-weight:700;margin:2px 0 8px;color:var(--gold,#f2c14e)">'+t('released_hdr')+'</div>'
+           +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px">';
+      rel.slice(-8).reverse().forEach(e=>{
+        const r=e.result, sk=r.vs_forecast;
+        const skTxt=sk==='beat'?'▲':sk==='miss'?'▼':sk==='inline'?'=':'';
+        const skCls=sk==='beat'?'up':sk==='miss'?'down':'neu';
+        const g=r.gold, gTxt=GA[g]||'', gCls=g==='up'?'up':g==='down'?'down':'neu';
+        const sp=(r.surprise_pct!=null)?((r.surprise_pct>0?'+':'')+r.surprise_pct+'%'):'';
+        h+='<div style="border:1px solid var(--line,#243049);border-radius:12px;padding:10px 12px">'
+          +'<div style="font-size:12px;color:var(--mut,#8aa0c0);margin-bottom:4px">'+e.currency+' · '+(e.title||'')+'</div>'
+          +'<div style="font-variant-numeric:tabular-nums"><b>'+t('eh_actual')+' '+r.actual+'</b>'
+          +(skTxt?' <span class="'+skCls+'">'+skTxt+' '+(e.forecast||'—')+(sp?' ('+sp+')':'')+'</span>':'')
+          +(gTxt?' · <span class="'+gCls+'">'+gTxt+'</span>':'')+'</div></div>';
+      });
+      h+='</div>';
+      box.innerHTML=h;
+    })();
     const _dial=$('evtDial'), _wrap=document.querySelector('.evtwheel-wrap');
     const up=ev.filter(e=>e.hours_until>=-12).slice(0,16);   // keep recent PASSED events too
     if(!up.length){
