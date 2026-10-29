@@ -28,6 +28,10 @@ MT5_FLOW = os.environ.get("GBAI_MT5_FLOW",
     r"C:\Users\ziaal\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\GoldBrainAI_Flow.txt")
 # calendar the LOCAL server already downloaded (residential IP) -> push to the cloud
 CAL_CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "calendar_cache.json")
+# MT5's own calendar (WITH actuals), exported by CalendarExport.mq5 -> merged into the
+# pushed calendar so the CLOUD can show released figures too (it can't read this file).
+MT5_CAL = os.environ.get("GBAI_MT5_CAL",
+    r"C:\Users\ziaal\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\hayula_calendar.json")
 # real broker OHLC bars the EA writes -> push to the cloud for the live candle chart
 MT5_BARS = os.environ.get("GBAI_MT5_BARS",
     r"C:\Users\ziaal\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\GoldBrainAI_Bars.csv")
@@ -64,6 +68,69 @@ def read_quote():
     return q
 
 
+def _norm(s):
+    return "".join(ch for ch in str(s).lower() if ch.isalnum())
+
+
+def _load_mt5_actuals():
+    """Released events (with actuals) from MT5's calendar export. [] if missing."""
+    try:
+        with open(MT5_CAL, "r", encoding="utf-8") as fh:
+            d = json.load(fh)
+    except Exception:
+        return []
+    out = []
+    for e in d:
+        if not str(e.get("actual", "")).strip():
+            continue
+        out.append({"cur": e.get("currency", ""), "norm": _norm(e.get("event", "")),
+                    "day": str(e.get("time", ""))[:10].replace(".", "-"), "raw": e})
+    return out
+
+
+def _enrich_actuals(data):
+    """Merge MT5 actuals into the calendar rows (match by currency + title + ~day),
+    so the cloud receives released figures it otherwise can't get."""
+    from datetime import datetime
+    cal = _load_mt5_actuals()
+    if not cal:
+        return data
+    n = 0
+    for row in data:
+        try:
+            et = datetime.fromisoformat(str(row.get("date", "")))
+        except Exception:
+            continue
+        nt = _norm(row.get("title", "")); cur = row.get("country", "")
+        best = None; bestscore = -1
+        for m in cal:
+            if m["cur"] != cur:
+                continue
+            mn = m["norm"]
+            if not (mn == nt or (mn and mn in nt) or (nt and nt in mn)):
+                continue
+            try:
+                dday = abs((datetime.fromisoformat(m["day"]).date() - et.date()).days)
+            except Exception:
+                dday = 0
+            if dday > 1:
+                continue
+            score = len(nt) - dday
+            if score > bestscore:
+                best = m; bestscore = score
+        if best and str(best["raw"].get("actual", "")).strip():
+            r = best["raw"]
+            row["actual"] = r["actual"]
+            if str(r.get("forecast", "")).strip():
+                row["forecast"] = r["forecast"]
+            if str(r.get("previous", "")).strip():
+                row["previous"] = r["previous"]
+            n += 1
+    if n:
+        print("[push] enriched %d events with MT5 actuals" % n)
+    return data
+
+
 def push_calendar():
     """Send the locally-downloaded economic calendar to the cloud (it may be blocked
     on the datacenter IP). Best-effort; the cloud keeps its last good copy otherwise."""
@@ -73,6 +140,7 @@ def push_calendar():
         data = obj.get("data") or []
         if not data:
             return
+        data = _enrich_actuals(data)        # add MT5 released figures for the cloud
         body = json.dumps({"data": data, "token": TOKEN}).encode("utf-8")
         req = urllib.request.Request(CLOUD_URL + "/ingest/calendar", data=body,
                                      headers={"Content-Type": "application/json"})

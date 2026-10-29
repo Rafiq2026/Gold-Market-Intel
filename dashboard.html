@@ -1349,6 +1349,19 @@ async function refresh(){
             let v=fmtSigned(net.toFixed(dd));
             if(peakMag>Math.abs(net)+1) v+=' · ⇅'+peakMag.toFixed(dd);
             expTxt=t('reacted_now',{v:v}); } }
+        // AFTER the release: show the ACTUAL figure, how it compared to forecast, and gold's take
+        let act='';
+        if(e.result&&e.result.released){
+          const sk=e.result.vs_forecast;
+          const skTxt=sk==='beat'?'▲':sk==='miss'?'▼':sk==='inline'?'=':'';
+          const skCls=sk==='beat'?'up':sk==='miss'?'down':'neu';
+          const gld=e.result.gold, gTxt=gld==='up'?'Au↑':gld==='down'?'Au↓':gld==='muted'?'Au·':'';
+          const gCls=gld==='up'?'up':gld==='down'?'down':'neu';
+          const sp=(e.result.surprise_pct!=null)?(' '+(e.result.surprise_pct>0?'+':'')+e.result.surprise_pct+'%'):'';
+          act='<div class="et-meta"><b style="color:var(--txt)">'+t('eh_actual')+' '+e.result.actual+'</b>'+
+              (skTxt?' <span class="'+skCls+'">'+skTxt+' '+t('d_forecast')+'</span>'+sp:'')+
+              (gTxt?' · <span class="'+gCls+'">'+gTxt+'</span>':'')+'</div>';
+        }
         const it=document.createElement('div');
         it.className='evtitem';
         it.dataset.idx=i;
@@ -1365,6 +1378,7 @@ async function refresh(){
           (e.tier1?' <span class="soon">★</span>':'')+'</div>'+
           '<div class="et-title">'+e.title+'</div>'+
           '<div class="et-meta">F '+(e.forecast||'—')+' · Prev '+(e.previous||'—')+' · '+localT(e.when)+' '+t('local')+'</div>'+
+          act+
           '<div class="et-exp '+expCls+'">'+dot+expTxt+'</div>';
         wheel.appendChild(it);
       });

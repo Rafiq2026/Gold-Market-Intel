@@ -23,3 +23,6 @@ geo_archive.json
 # Secrets (never commit)
 .env
 *.key
+
+# secrets
+fmp_key.txt

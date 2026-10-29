@@ -30,6 +30,8 @@ import macro_history as MH
 CALENDAR_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
 # Shared calendar cache written by news_feed (one download for both modules).
 CAL_CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "calendar_cache.json")
+# MT5's own economic calendar (WITH actuals), exported by CalendarExport.mq5.
+MT5_CAL = r"C:\Users\ziaal\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\hayula_calendar.json"
 REFRESH_SEC = 1800                      # calendar changes slowly; every 30 min
 RELEVANT = {"USD", "EUR", "GBP", "ALL", "CNY"}   # gold-relevant currencies
 _UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"}
@@ -57,6 +59,47 @@ def _num_of(s):
         return float(t) * mult
     except ValueError:
         return None
+
+
+def _norm(s):
+    return "".join(ch for ch in str(s).lower() if ch.isalnum())
+
+
+def _load_mt5_cal():
+    """Released events (with actuals) from MT5's calendar export. [] if missing."""
+    try:
+        with open(MT5_CAL, encoding="utf-8") as fh:
+            d = json.load(fh)
+    except Exception:
+        return []
+    out = []
+    for e in d:
+        if not str(e.get("actual", "")).strip():
+            continue
+        out.append({"cur": e.get("currency", ""), "norm": _norm(e.get("event", "")),
+                    "day": str(e.get("time", ""))[:10].replace(".", "-"), "raw": e})
+    return out
+
+
+def _match_actual(cal, title, cur, et):
+    """Find the MT5 released row matching this calendar event (currency+title+~day)."""
+    nt = _norm(title); best = None; bestscore = -1
+    for m in cal:
+        if m["cur"] != cur:
+            continue
+        mn = m["norm"]
+        if not (mn == nt or (mn and mn in nt) or (nt and nt in mn)):
+            continue
+        try:
+            dday = abs((datetime.fromisoformat(m["day"]).date() - et.date()).days)
+        except Exception:
+            dday = 0
+        if dday > 1:
+            continue
+        score = len(nt) - dday
+        if score > bestscore:
+            best = m; bestscore = score
+    return best["raw"] if best else None
 
 
 def _family(title: str):
@@ -166,6 +209,36 @@ def _analyze(title: str, forecast: str, previous: str):
             "scen_kind": "", "note": "No strong directional convention for this release."}
 
 
+def _actual_read(actual, forecast, previous, scen):
+    """After the release: compare the ACTUAL print to the forecast and say what it
+    meant for gold. Uses the same transparent scen map (beat/inline/miss -> gold)."""
+    if actual is None or str(actual).strip() == "":
+        return {"released": False}
+    ac = _num_of(actual); fc = _num_of(forecast); pv = _num_of(previous)
+    av = str(actual).strip()
+    try:
+        av = "%g" % float(av)        # 91.700 -> 91.7
+    except Exception:
+        pass
+    out = {"released": True, "actual": av}
+    if ac is not None and fc is not None:
+        eps = max(abs(fc) * 0.001, 1e-9)
+        sk = "beat" if ac > fc + eps else "miss" if ac < fc - eps else "inline"
+        out["vs_forecast"] = sk                         # beat=above / miss=below / inline
+        out["delta"] = round(ac - fc, 6)
+        if fc != 0:
+            out["surprise_pct"] = round((ac - fc) / abs(fc) * 100.0, 1)
+        out["gold"] = (scen or {}).get(sk, "na")        # realized gold implication
+        label = {"beat": "بالاتر از پیش‌بینی", "miss": "پایین‌تر از پیش‌بینی", "inline": "مطابقِ پیش‌بینی"}[sk]
+        gmap = {"up": "طلا ↑", "down": "طلا ↓", "muted": "اثرِ کم", "na": "—"}
+        out["label_fa"] = label
+        out["gold_fa"] = gmap.get(out["gold"], "—")
+    elif ac is not None and pv is not None:
+        out["vs_prev"] = "higher" if ac > pv else "lower" if ac < pv else "same"
+        out["label_fa"] = "بدونِ پیش‌بینی (مقایسه با قبلی)"
+    return out
+
+
 def _hist_read(family, fc, h):
     """Turn real FRED history into a forward-looking, evidence-based read:
     how the upcoming forecast sits vs the indicator's recent trend."""
@@ -228,6 +301,7 @@ class EventsFeed:
         self._lock = threading.Lock()
         self._state = {"ok": False, "count": 0, "next_event": "", "next_when": "",
                        "next_hours": -1, "events": [], "updated": ""}
+        self._mt5cal = []
         self._thread = None
 
     def start(self):
@@ -305,6 +379,7 @@ class EventsFeed:
             except Exception:
                 return self.snapshot()   # keep last good; never crash to empty
         now = datetime.now(timezone.utc)
+        self._mt5cal = _load_mt5_cal()      # MT5 actuals, refreshed each cycle
         events = []
         for ev in data:
             impact = str(ev.get("impact", ""))
@@ -321,11 +396,20 @@ class EventsFeed:
             except Exception:
                 continue
             hrs = (et - now).total_seconds() / 3600.0
-            if hrs < -26:                     # keep ~1 day of past events (for scoring;
-                continue                       # the dashboard table still shows only recent)
+            if hrs < -96:                     # keep ~4 days of past events so a released
+                continue                       # figure stays listed until MT5's (lagging) actual arrives
             title = str(ev.get("title", ""))
             fc = str(ev.get("forecast", "")); pv = str(ev.get("previous", ""))
+            ac = str(ev.get("actual", ""))             # FF has none; MT5 calendar does
             a = _analyze(title, fc, pv)
+            m5 = _match_actual(self._mt5cal, title, cur, et)
+            if m5:                                      # enrich with MT5's released figure
+                result = _actual_read(m5.get("actual", ""), m5.get("forecast", fc),
+                                      m5.get("previous", pv), a["scen"])
+                if not ac:
+                    ac = str(m5.get("actual", ""))
+            else:
+                result = _actual_read(ac, fc, pv, a["scen"])
             # Real historical actuals (FRED) -> forward, evidence-based read.
             hist = MH.FEED.history_for(title) if cur == "USD" else None
             fc_num = _num_of(fc)
@@ -349,6 +433,8 @@ class EventsFeed:
                 "hours_until": round(hrs, 1),
                 "forecast": fc,
                 "previous": pv,
+                "actual": ac,                       # the released figure (empty until out)
+                "result": result,                   # released? beat/miss/inline, delta, gold
                 "family": a["family"],
                 "expects": a["priced_in"],          # higher/lower/steady/policy tone
                 "impact_label": impact_label,       # single analytical read (no "if")
