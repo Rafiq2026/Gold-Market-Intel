@@ -466,6 +466,12 @@
 
 <div class="wrap">
   <div class="grid">
+    <!-- Hayula live signal (the organism's own brain + hands) -->
+    <div class="card" id="hayulaCard">
+      <h2>🐉 Hayula <span id="hyState" class="sub">…</span></h2>
+      <div id="hyBody" class="neu" style="padding:6px 0">…</div>
+      <div class="legend" style="margin-top:6px;opacity:.75">مغز + قلب + شش + دست · فقط DEMO</div>
+    </div>
     <!-- Composite drivers -->
     <div class="card">
       <h2 id="compHdr">Gold Drivers (composite)</h2>
@@ -1343,7 +1349,7 @@ async function refresh(){
         const inLine=e.forecast&&e.previous&&(''+e.forecast===''+e.previous);
         const richLbl=e.impact_label||(inLine?t('inline_watch'):t('surprise_driven'));
         let expTxt=pv.rich?richLbl:pv.label, expCls=dc;
-        if(e.hours_until<0){ const rx=reactionFor(e.when);
+        if(e.hours_until<0){ const rx=e.reaction||reactionFor(e.when);  // server-measured (real M1 OHLC) first, else client
           if(rx){ const dd=decFor(_symbol);
             // NET = where gold settled (correct direction); append the spike range when the
             // whipsaw was much bigger than the settle, so a dip-then-rally isn't shown as a drop.
@@ -1358,7 +1364,10 @@ async function refresh(){
           const sk=e.result.vs_forecast;
           const skTxt=sk==='beat'?'▲':sk==='miss'?'▼':sk==='inline'?'=':'';
           const skCls=sk==='beat'?'up':sk==='miss'?'down':'neu';
-          const gld=e.result.gold, gTxt=gld==='up'?'Au↑':gld==='down'?'Au↓':gld==='muted'?'Au·':'';
+          let gld=e.result.gold;
+          if(e.reaction){ const _ex=Math.abs(e.reaction.drop)>=Math.abs(e.reaction.pop)?e.reaction.drop:e.reaction.pop;
+                          gld=_ex<-0.01?'down':_ex>0.01?'up':'muted'; }   // REAL move overrides the forecast guess
+          const gTxt=gld==='up'?'Au↑':gld==='down'?'Au↓':gld==='muted'?'Au·':'';
           const gCls=gld==='up'?'up':gld==='down'?'down':'neu';
           const sp=(e.result.surprise_pct!=null)?(' '+(e.result.surprise_pct>0?'+':'')+e.result.surprise_pct+'%'):'';
           act='<div class="et-meta" style="background:rgba(242,193,78,.08);border-radius:8px;padding:4px 8px;margin-top:4px">'+
@@ -1849,6 +1858,31 @@ async function loadEvents(){
     });
   }catch(_){ box.innerHTML='<div class="neu">—</div>'; }
 }
+async function loadHayula(){
+  try{
+    const s=await (await fetch('/hayula',{cache:'no-store'})).json();
+    const el=document.getElementById('hyBody'), hdr=document.getElementById('hyState');
+    if(!el) return;
+    if(!s.ok){ hdr.textContent='· خاموش'; el.innerHTML='<span class="neu">اجراگر روشن نیست</span>'; return; }
+    hdr.textContent = s.alive?'· زنده 🟢':'· کهنه';
+    const PA={BUY:'خرید 📈',SELL:'فروش 📉',FLAT:'صبر ✋'};
+    let h='';
+    if(s.state==='open'){
+      const col=s.side==='SELL'?'down':'up';
+      h='<div class="row"><span>معاملهٔ باز</span><span class="'+col+'">'+(s.side==='SELL'?'فروش 📉':'خرید 📈')+' '+s.lots+' لات @'+s.entry+'</span></div>'
+       +'<div class="row"><span>شناور</span><span class="'+(s.floating>=0?'up':'down')+'">'+(s.floating>=0?'+':'')+s.floating+'$</span></div>'
+       +'<div class="row"><span>SL / TP</span><span class="neu">'+s.sl+' / '+s.tp+'</span></div>';
+    }else{
+      const col=s.action==='SELL'?'down':s.action==='BUY'?'up':'neu';
+      h='<div class="row"><span>سیگنال</span><span class="'+col+'" style="font-weight:800">'+(PA[s.action]||s.action)+'</span></div>'
+       +'<div class="row"><span>قیمت</span><span class="neu">'+(s.price||'—')+'</span></div>'
+       +'<div class="row"><span>هوا 🫁</span><span class="neu">'+(s.air||'—')+'</span></div>';
+    }
+    if(s.last_trade){ const lt=s.last_trade; h+='<div class="row"><span>آخرین معامله</span><span class="'+(lt.pnl>=0?'up':'down')+'">'+lt.side+' '+(lt.pnl>=0?'+':'')+lt.pnl+'$ · '+lt.time+'</span></div>'; }
+    el.innerHTML=h;
+  }catch(e){}
+}
+loadHayula(); setInterval(loadHayula, 8000);
 loadEvents(); setInterval(loadEvents, 60000);
 loadSeries(); setInterval(loadSeries, 60000);
 loadReactCandles(); setInterval(loadReactCandles, 60000);

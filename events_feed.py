@@ -96,7 +96,9 @@ def _match_actual(cal, title, cur, et):
             dday = 0
         if dday > 1:
             continue
-        score = len(nt) - dday
+        # prefer an EXACT title match, then the most specific (longest) calendar
+        # name - so "Core CPI m/m" takes core's value, not plain "CPI m/m".
+        score = (1000 if mn == nt else len(mn)) - dday
         if score > bestscore:
             best = m; bestscore = score
     return best["raw"] if best else None
@@ -377,7 +379,16 @@ class EventsFeed:
                 except Exception:
                     pass
             except Exception:
-                return self.snapshot()   # keep last good; never crash to empty
+                # live fetch failed (e.g. ForexFactory 429 rate-limit). Fall back to
+                # the last cached calendar on disk - even if older than the 2h window -
+                # so a restart during a 429 never leaves the feed empty.
+                try:
+                    with open(CAL_CACHE, "r", encoding="utf-8") as fh:
+                        data = json.load(fh).get("data")
+                except Exception:
+                    data = None
+                if not data:
+                    return self.snapshot()   # keep last good in-memory; never crash to empty
         now = datetime.now(timezone.utc)
         self._mt5cal = _load_mt5_cal()      # MT5 actuals, refreshed each cycle
         events = []
@@ -435,6 +446,7 @@ class EventsFeed:
                 "previous": pv,
                 "actual": ac,                       # the released figure (empty until out)
                 "result": result,                   # released? beat/miss/inline, delta, gold
+                "reaction": ev.get("reaction"),     # REAL measured gold move (5-min OHLC), from push_quote
                 "family": a["family"],
                 "expects": a["priced_in"],          # higher/lower/steady/policy tone
                 "impact_label": impact_label,       # single analytical read (no "if")

@@ -21,6 +21,7 @@ import sys
 import json
 import time
 import urllib.request
+from datetime import datetime, timezone, timedelta
 
 MT5_QUOTE = os.environ.get("GBAI_MT5_QUOTE",
     r"C:\Users\ziaal\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\GoldBrainAI_Quote.txt")
@@ -88,14 +89,60 @@ def _load_mt5_actuals():
     return out
 
 
+_MT5_OK = None
+
+def _m1_bars_server():
+    """Recent M1 bars as (server_dt, high, low, close). [] if MT5 unavailable. The bar
+    time and the MT5 calendar event time share the broker-server clock, so they align
+    without any timezone conversion."""
+    global _MT5_OK
+    try:
+        import MetaTrader5 as mt5
+        if _MT5_OK is None:
+            _MT5_OK = bool(mt5.initialize())
+        if not _MT5_OK:
+            return []
+        r = mt5.copy_rates_from_pos("XAUUSD", mt5.TIMEFRAME_M1, 0, 8000)   # ~5.5 days
+        if r is None:
+            return []
+        return [(datetime.fromtimestamp(int(b["time"]), tz=timezone.utc),
+                 float(b["high"]), float(b["low"]), float(b["close"])) for b in r]
+    except Exception:
+        return []
+
+
+def _reaction(bars, ev_time_str, win_min=5):
+    """Gold's REAL isolated reaction in the first `win_min` min after the release, from
+    real M1 OHLC - captures the violent intra-candle spike (e.g. the 40-dollar CPI
+    candle) via candle high/low, not just close. ev_time_str = MT5 cal 'YYYY.MM.DD HH:MM'."""
+    try:
+        et = datetime.strptime(str(ev_time_str)[:16], "%Y.%m.%d %H:%M").replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+    end = et + timedelta(minutes=win_min)
+    pre = None; hi = None; lo = None; last = None
+    for (bt, h, l, c) in bars:
+        if bt < et:
+            pre = c
+        elif bt <= end:
+            hi = h if hi is None else max(hi, h)
+            lo = l if lo is None else min(lo, l)
+            last = c
+    if pre is None or hi is None:
+        return None
+    return {"pre": round(pre, 2), "net": round(last - pre, 2),
+            "pop": round(hi - pre, 2), "drop": round(lo - pre, 2), "win_min": win_min}
+
+
 def _enrich_actuals(data):
-    """Merge MT5 actuals into the calendar rows (match by currency + title + ~day),
-    so the cloud receives released figures it otherwise can't get."""
-    from datetime import datetime
+    """Merge MT5 actuals into the calendar rows (match by currency + title + ~day) and,
+    for released events, attach the REAL measured gold reaction - so the cloud shows the
+    released figure AND what gold actually did, not a forecast-based guess."""
     cal = _load_mt5_actuals()
     if not cal:
         return data
-    n = 0
+    bars = _m1_bars_server()
+    n = 0; rx_n = 0
     for row in data:
         try:
             et = datetime.fromisoformat(str(row.get("date", "")))
@@ -115,7 +162,9 @@ def _enrich_actuals(data):
                 dday = 0
             if dday > 1:
                 continue
-            score = len(nt) - dday
+            # prefer EXACT title match, then the most-specific (longest) name, so
+            # "Core CPI m/m" takes core's value - not plain "CPI m/m".
+            score = (1000 if mn == nt else len(mn)) - dday
             if score > bestscore:
                 best = m; bestscore = score
         if best and str(best["raw"].get("actual", "")).strip():
@@ -126,8 +175,12 @@ def _enrich_actuals(data):
             if str(r.get("previous", "")).strip():
                 row["previous"] = r["previous"]
             n += 1
+            if bars:                              # attach the REAL measured gold reaction
+                rx = _reaction(bars, r.get("time", ""))
+                if rx:
+                    row["reaction"] = rx; rx_n += 1
     if n:
-        print("[push] enriched %d events with MT5 actuals" % n)
+        print("[push] enriched %d events with MT5 actuals (%d with gold reaction)" % (n, rx_n))
     return data
 
 
