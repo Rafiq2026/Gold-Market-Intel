@@ -23,7 +23,7 @@ import threading
 import time
 import json
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import macro_history as MH
 
@@ -102,6 +102,89 @@ def _match_actual(cal, title, cur, et):
         if score > bestscore:
             best = m; bestscore = score
     return best["raw"] if best else None
+
+
+_RX_BARS = {"t": 0.0, "bars": []}
+
+def _react_bars():
+    """Recent M1 bars (server_dt, high, low, close) for reaction measurement; cached 60s.
+    [] if MT5 is unavailable (e.g. on the cloud, which gets the reaction via push_quote)."""
+    import time as _t
+    if _t.time() - _RX_BARS["t"] < 60 and _RX_BARS["bars"]:
+        return _RX_BARS["bars"]
+    try:
+        import MetaTrader5 as mt5
+        if not mt5.initialize():
+            return _RX_BARS["bars"]
+        r = mt5.copy_rates_from_pos("XAUUSD", mt5.TIMEFRAME_M1, 0, 8000)
+        if r is None:
+            return _RX_BARS["bars"]
+        bars = [(datetime.fromtimestamp(int(b["time"]), tz=timezone.utc),
+                 float(b["high"]), float(b["low"]), float(b["close"])) for b in r]
+        _RX_BARS["bars"] = bars; _RX_BARS["t"] = _t.time()
+        return bars
+    except Exception:
+        return _RX_BARS["bars"]
+
+
+def _measure_reaction(ev_time_str, win_min=5):
+    """Gold's REAL isolated reaction in the first `win_min` min after a release, from real
+    M1 OHLC (pop=max up, drop=max down, net=close) - captures the violent release-candle
+    spike. ev_time_str = MT5 cal 'YYYY.MM.DD HH:MM' (same broker-server clock as the bars)."""
+    bars = _react_bars()
+    if not bars:
+        return None
+    try:
+        et = datetime.strptime(str(ev_time_str)[:16], "%Y.%m.%d %H:%M").replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+    end = et + timedelta(minutes=win_min)
+    pre = None; hi = None; lo = None; last = None
+    for (bt, h, l, c) in bars:
+        if bt < et:
+            pre = c
+        elif bt <= end:
+            hi = h if hi is None else max(hi, h)
+            lo = l if lo is None else min(lo, l)
+            last = c
+    if pre is None or hi is None:
+        return None
+    return {"pre": round(pre, 2), "net": round(last - pre, 2),
+            "pop": round(hi - pre, 2), "drop": round(lo - pre, 2), "win_min": win_min}
+
+
+def _load_mt5_all():
+    """ALL MT5 calendar rows (with their server times) - even ones whose actual has not
+    been published yet, so we can time the gold reaction before the slow actual arrives."""
+    try:
+        with open(MT5_CAL, "r", encoding="utf-8-sig") as fh:
+            d = json.load(fh)
+    except Exception:
+        return []
+    return [{"cur": e.get("currency", ""), "norm": _norm(e.get("event", "")),
+             "day": str(e.get("time", ""))[:10].replace(".", "-"),
+             "time": e.get("time", "")} for e in d]
+
+
+def _match_time(cal, title, cur, et):
+    """Server-time string of the MT5 calendar row for this event (same matching as actuals)."""
+    nt = _norm(title); best = None; bs = -1
+    for m in cal:
+        if m["cur"] != cur:
+            continue
+        mn = m["norm"]
+        if not (mn == nt or (mn and mn in nt) or (nt and nt in mn)):
+            continue
+        try:
+            dday = abs((datetime.fromisoformat(m["day"]).date() - et.date()).days)
+        except Exception:
+            dday = 0
+        if dday > 1:
+            continue
+        score = (1000 if mn == nt else len(mn)) - dday
+        if score > bs:
+            best = m; bs = score
+    return best["time"] if best else None
 
 
 def _family(title: str):
@@ -391,6 +474,7 @@ class EventsFeed:
                     return self.snapshot()   # keep last good in-memory; never crash to empty
         now = datetime.now(timezone.utc)
         self._mt5cal = _load_mt5_cal()      # MT5 actuals, refreshed each cycle
+        self._mt5all = _load_mt5_all()      # ALL MT5 rows (for event times, even pre-actual)
         events = []
         for ev in data:
             impact = str(ev.get("impact", ""))
@@ -421,6 +505,15 @@ class EventsFeed:
                     ac = str(m5.get("actual", ""))
             else:
                 result = _actual_read(ac, fc, pv, a["scen"])
+            # REAL gold reaction: use the pushed one (cloud) if present, else measure it
+            # locally from MT5 M1 OHLC so the local dashboard shows the truth too.
+            reaction = ev.get("reaction")
+            if not reaction and m5 and str(m5.get("actual", "")).strip():
+                reaction = _measure_reaction(m5.get("time", ""))
+            if not reaction and hrs < -0.1:          # released by TIME: show the real move now,
+                tstr = _match_time(self._mt5all, title, cur, et)   # even before the slow actual arrives
+                if tstr:
+                    reaction = _measure_reaction(tstr)
             # Real historical actuals (FRED) -> forward, evidence-based read.
             hist = MH.FEED.history_for(title) if cur == "USD" else None
             fc_num = _num_of(fc)
@@ -446,7 +539,7 @@ class EventsFeed:
                 "previous": pv,
                 "actual": ac,                       # the released figure (empty until out)
                 "result": result,                   # released? beat/miss/inline, delta, gold
-                "reaction": ev.get("reaction"),     # REAL measured gold move (5-min OHLC), from push_quote
+                "reaction": reaction,               # REAL measured gold move (5-min OHLC): pushed (cloud) or local MT5
                 "family": a["family"],
                 "expects": a["priced_in"],          # higher/lower/steady/policy tone
                 "impact_label": impact_label,       # single analytical read (no "if")
